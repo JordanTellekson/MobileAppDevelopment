@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Shell
+    x:Class="RecipeApp.AppShell"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:local="clr-namespace:RecipeApp"
+    xmlns:views="clr-namespace:RecipeApp.Views"
+    Shell.FlyoutBehavior="Disabled"
+    Title="RecipeApp">
+
+    <ShellContent Title="Recipes" ContentTemplate="{DataTemplate views:RecipeListPage}" />
+
+    <ShellContent Route="RecipeDetailPage" ContentTemplate="{DataTemplate views:RecipeDetailPage}" />
+
+    <ShellContent Title="Home" ContentTemplate="{DataTemplate local:MainPage}" Route="MainPage" />
+
+</Shell>

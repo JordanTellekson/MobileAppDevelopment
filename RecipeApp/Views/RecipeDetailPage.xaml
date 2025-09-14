@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:RecipeApp.ViewModels"
+             x:Class="RecipeApp.Views.RecipeDetailPage">
+
+    <ContentPage.BindingContext>
+        <vm:RecipeDetailViewModel />
+    </ContentPage.BindingContext>
+
+    <ScrollView>
+        <VerticalStackLayout Padding="15">
+            <Image Source="{Binding Recipe.ImageUrl}" HeightRequest="200" Aspect="AspectFill"/>
+            <Label Text="{Binding Recipe.Title}" FontSize="24" FontAttributes="Bold" Margin="0,10,0,0"/>
+            <Label Text="{Binding Recipe.CookingTimeMinutes, StringFormat='Cooking Time: {0} mins'}" FontSize="16"/>
+
+            <Label Text="Ingredients:" FontSize="18" FontAttributes="Bold" Margin="0,10,0,0"/>
+            <CollectionView ItemsSource="{Binding Recipe.Ingredients}">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Label Text="{Binding ., StringFormat=• {0}}" FontSize="16"/>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+            <Label Text="Instructions:" FontSize="18" FontAttributes="Bold" Margin="0,10,0,0"/>
+            <Label Text="{Binding Recipe.Instructions}" FontSize="16"/>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

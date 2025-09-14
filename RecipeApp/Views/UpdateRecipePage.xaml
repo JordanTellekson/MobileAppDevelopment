@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:RecipeApp.ViewModels"
+             x:Class="RecipeApp.Views.UpdateRecipePage"
+             Title="Update Recipe">
+
+    <ContentPage.BindingContext>
+        <vm:UpdateRecipeViewModel />
+    </ContentPage.BindingContext>
+
+    <ScrollView>
+        <VerticalStackLayout Padding="15" Spacing="10">
+
+            <Entry Placeholder="Title"
+                   Text="{Binding Title}" />
+
+            <Editor Placeholder="Description"
+                    Text="{Binding Description}"
+                    HeightRequest="60" />
+
+            <Entry Placeholder="Image URL"
+                   Text="{Binding ImageUrl}" />
+
+            <Entry Placeholder="Cooking Time (minutes)"
+                   Keyboard="Numeric"
+                   Text="{Binding CookingTimeMinutes}" />
+
+            <Editor Placeholder="Ingredients (comma-separated)"
+                    Text="{Binding Ingredients}"
+                    HeightRequest="80" />
+
+            <Editor Placeholder="Instructions"
+                    Text="{Binding Instructions}"
+                    HeightRequest="120" />
+
+            <HorizontalStackLayout Spacing="10">
+                <Button Text="Save"
+                        Command="{Binding SaveCommand}" />
+                <Button Text="Cancel"
+                        Command="{Binding CancelCommand}" />
+            </HorizontalStackLayout>
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
