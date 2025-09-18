@@ -1,9 +1,12 @@
+using RecipeApp.ViewModels;
+
 namespace RecipeApp.Views;
 
 public partial class RecipeListPage : ContentPage
 {
-	public RecipeListPage()
+	public RecipeListPage(RecipeListViewModel viewModel)
 	{
 		InitializeComponent();
+		BindingContext = viewModel;
 	}
 }

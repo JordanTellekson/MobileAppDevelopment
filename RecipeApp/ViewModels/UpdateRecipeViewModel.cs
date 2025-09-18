@@ -1,17 +1,39 @@
-﻿using Microsoft.Maui.Controls;
-using MvvmHelpers;
-using RecipeApp.Models;
+﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
-using System.Windows.Input;
+using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
+using CommunityToolkit.Mvvm.Input;
+using RecipeApp.Models;
+using RecipeApp.Services;
 
 namespace RecipeApp.ViewModels
 {
     [QueryProperty(nameof(Recipe), "Recipe")]
-    public class UpdateRecipeViewModel : BaseViewModel
+    public class UpdateRecipeViewModel : INotifyPropertyChanged
     {
-        private Recipe _recipe;
+        private readonly IRecipeRepository _repository;
+        private readonly IDialogService _dialogService;
+        private readonly INavigationService _navigationService;
+        private readonly IUserService _userService;
 
+        public UpdateRecipeViewModel(
+            IRecipeRepository repository,
+            IDialogService dialogService,
+            INavigationService navigationService,
+            IUserService userService)
+        {
+            _repository = repository;
+            _dialogService = dialogService;
+            _navigationService = navigationService;
+            _userService = userService;
+
+            SaveCommand = new AsyncRelayCommand(OnSaveAsync);
+            CancelCommand = new AsyncRelayCommand(OnCancelAsync);
+        }
+
+        private Recipe _recipe;
         public Recipe Recipe
         {
             get => _recipe;
@@ -20,7 +42,6 @@ namespace RecipeApp.ViewModels
                 _recipe = value;
                 OnPropertyChanged();
 
-                // Pre-fill editable fields when the recipe is set
                 if (_recipe != null)
                 {
                     Title = _recipe.Title;
@@ -33,64 +54,66 @@ namespace RecipeApp.ViewModels
             }
         }
 
-        // Editable fields
         private string _title;
         public string Title
         {
             get => _title;
-            set => SetProperty(ref _title, value);
+            set { _title = value; OnPropertyChanged(); }
         }
 
         private string _description;
         public string Description
         {
             get => _description;
-            set => SetProperty(ref _description, value);
+            set { _description = value; OnPropertyChanged(); }
         }
 
         private string _imageUrl;
         public string ImageUrl
         {
             get => _imageUrl;
-            set => SetProperty(ref _imageUrl, value);
+            set { _imageUrl = value; OnPropertyChanged(); }
         }
 
         private string _cookingTimeMinutes;
         public string CookingTimeMinutes
         {
             get => _cookingTimeMinutes;
-            set => SetProperty(ref _cookingTimeMinutes, value);
+            set { _cookingTimeMinutes = value; OnPropertyChanged(); }
         }
 
         private string _ingredients;
         public string Ingredients
         {
             get => _ingredients;
-            set => SetProperty(ref _ingredients, value);
+            set { _ingredients = value; OnPropertyChanged(); }
         }
 
         private string _instructions;
         public string Instructions
         {
             get => _instructions;
-            set => SetProperty(ref _instructions, value);
+            set { _instructions = value; OnPropertyChanged(); }
         }
 
-        public ICommand SaveCommand { get; }
-        public ICommand CancelCommand { get; }
+        public IAsyncRelayCommand SaveCommand { get; }
+        public IAsyncRelayCommand CancelCommand { get; }
 
-        public UpdateRecipeViewModel()
-        {
-            SaveCommand = new Command(OnSave);
-            CancelCommand = new Command(OnCancel);
-        }
-
-        private async void OnSave()
+        private async Task OnSaveAsync()
         {
             if (Recipe == null)
+            {
+                await _dialogService.ShowAlertAsync("Error", "No recipe loaded to update", "OK");
                 return;
+            }
 
-            // Update the original recipe directly
+            if (string.IsNullOrWhiteSpace(Title))
+            {
+                await _dialogService.ShowAlertAsync("Error", "Title is required", "OK");
+                return;
+            }
+
+            // Update recipe properties
             Recipe.Title = Title;
             Recipe.Description = Description;
             Recipe.ImageUrl = ImageUrl;
@@ -102,13 +125,19 @@ namespace RecipeApp.ViewModels
                                  ?? new List<string>();
             Recipe.Instructions = Instructions;
 
-            // Navigate back
-            await Shell.Current.GoToAsync("..");
+            // Save via repository (ObservableCollection ensures UI updates automatically)
+            await _repository.UpdateRecipeAsync(Recipe);
+
+            await _navigationService.GoBackAsync();
         }
 
-        private async void OnCancel()
+        private async Task OnCancelAsync()
         {
-            await Shell.Current.GoToAsync("..");
+            await _navigationService.GoBackAsync();
         }
+
+        public event PropertyChangedEventHandler PropertyChanged;
+        protected void OnPropertyChanged([CallerMemberName] string propertyName = "")
+            => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }

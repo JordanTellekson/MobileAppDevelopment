@@ -1,95 +1,93 @@
-﻿using Microsoft.Maui.Controls;
-using MvvmHelpers;
-using RecipeApp.Models;
-using RecipeApp.Views;
-using System.Collections.Generic;
+﻿using System;
 using System.Collections.ObjectModel;
-using System.Windows.Input;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
+using CommunityToolkit.Mvvm.Input;
+using RecipeApp.Models;
+using RecipeApp.Services;
 
 namespace RecipeApp.ViewModels
 {
-    public class RecipeListViewModel : BaseViewModel
+    public class RecipeListViewModel : INotifyPropertyChanged
     {
-        // Static shared collection for in-memory storage
-        public static ObservableCollection<Recipe> RecipesStore { get; set; }
+        private readonly IRecipeRepository _repository;
+        private readonly IDialogService _dialogService;
+        private readonly INavigationService _navigationService;
+        private readonly IUserService _userService;
 
-        // Instance property for binding in XAML
-        public ObservableCollection<Recipe> Recipes => RecipesStore;
-
-        public ICommand RecipeTappedCommand { get; }
-
-        public ICommand AddRecipeCommand { get; }
-
-        public ICommand UpdateRecipeCommand { get; }
-
-        // Local author "Test" for testing purposes
-        public static string CurrentAuthor { get; set; } = "Test";
-
-        public RecipeListViewModel()
+        public RecipeListViewModel(
+            IRecipeRepository repository,
+            IDialogService dialogService,
+            INavigationService navigationService,
+            IUserService userService)
         {
-            // Initialize the static collection only once
-            if (RecipesStore == null)
+            _repository = repository;
+            _dialogService = dialogService;
+            _navigationService = navigationService;
+            _userService = userService;
+
+            // Bind directly to the repository's ObservableCollection
+            Recipes = _repository.Recipes;
+
+            RecipeTappedCommand = new AsyncRelayCommand<Recipe>(OnRecipeTappedAsync);
+            AddRecipeCommand = new AsyncRelayCommand(OnAddRecipeAsync);
+            UpdateRecipeCommand = new AsyncRelayCommand<Recipe>(OnUpdateRecipeAsync);
+        }
+
+        public ObservableCollection<Recipe> Recipes { get; }
+
+        public string CurrentUser => _userService.CurrentUser;
+
+        private bool _isLoading;
+        public bool IsLoading
+        {
+            get => _isLoading;
+            set
             {
-                RecipesStore = new ObservableCollection<Recipe>
-                {
-                    new Recipe
-                    {
-                        Title = "Spaghetti Carbonara",
-                        Description = "Classic Italian pasta dish.",
-                        ImageUrl = "spaghetti.jpg",
-                        Ingredients = new List<string>{ "Pasta", "Eggs", "Pancetta", "Parmesan" },
-                        Instructions = "Cook pasta, fry pancetta, mix with eggs and cheese.",
-                        CookingTimeMinutes = 30,
-                        Author = "SomeoneElse"
-                    },
-                    new Recipe
-                    {
-                        Title = "Chicken Curry",
-                        Description = "Aromatic and spicy curry.",
-                        ImageUrl = "curry.jpg",
-                        Ingredients = new List<string>{ "Chicken", "Curry Paste", "Coconut Milk" },
-                        Instructions = "Cook chicken, add curry paste, stir in coconut milk.",
-                        CookingTimeMinutes = 40,
-                        Author = "OtherUser"
-                    }
-                };
+                _isLoading = value;
+                OnPropertyChanged();
             }
-
-            RecipeTappedCommand = new Command<Recipe>(OnRecipeTapped);
-            AddRecipeCommand = new Command(OnAddRecipe);
-            UpdateRecipeCommand = new Command<Recipe>(OnUpdateRecipe);
         }
 
-        // Navigate to recipe detail page, passing the selected recipe via Shell parameters
-        private async void OnRecipeTapped(Recipe recipe)
-        {
-            if (recipe == null)
-                return;
+        public IAsyncRelayCommand<Recipe> RecipeTappedCommand { get; }
+        public IAsyncRelayCommand AddRecipeCommand { get; }
+        public IAsyncRelayCommand<Recipe> UpdateRecipeCommand { get; }
 
-            await Shell.Current.GoToAsync(nameof(RecipeDetailPage), new Dictionary<string, object>
+        private async Task OnRecipeTappedAsync(Recipe recipe)
+        {
+            if (recipe == null) return;
+
+            // Pass only the Recipe Id to RecipeDetailPage
+            var parameters = new Dictionary<string, object>
             {
-                { "Recipe", recipe }
-            });
+                { "RecipeId", recipe.Id.ToString() }
+            };
+
+            await _navigationService.NavigateToAsync(nameof(Views.RecipeDetailPage), parameters);
         }
 
-        // Navigate to add recipe page
-        private async void OnAddRecipe()
+        private async Task OnAddRecipeAsync()
         {
-            await Shell.Current.GoToAsync(nameof(AddRecipePage));
+            await _navigationService.NavigateToAsync(nameof(Views.AddRecipePage));
+            // No need to reload—Recipes updates automatically
         }
 
-        // Navigate to update recipe page, passing the selected recipe via Shell parameters
-        private async void OnUpdateRecipe(Recipe recipe)
+        private async Task OnUpdateRecipeAsync(Recipe recipe)
         {
-            if (recipe == null)
-                return;
+            if (recipe == null) return;
 
-            var navigationParameter = new Dictionary<string, object>
+            var parameters = new Dictionary<string, object>
             {
                 { "Recipe", recipe }
             };
 
-            await Shell.Current.GoToAsync(nameof(UpdateRecipePage), navigationParameter);
+            await _navigationService.NavigateToAsync(nameof(Views.UpdateRecipePage), parameters);
+            // No need to reload—Recipes updates automatically
         }
+
+        public event PropertyChangedEventHandler PropertyChanged;
+        protected void OnPropertyChanged([CallerMemberName] string propertyName = "")
+            => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }

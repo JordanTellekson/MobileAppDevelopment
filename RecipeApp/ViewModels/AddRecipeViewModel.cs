@@ -1,43 +1,89 @@
-﻿using Microsoft.Maui.Controls;
-using MvvmHelpers;
-using RecipeApp.Models;
+﻿using System;
 using System.Collections.Generic;
-using System.Windows.Input;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
+using CommunityToolkit.Mvvm.Input;
+using RecipeApp.Models;
+using RecipeApp.Services;
 
 namespace RecipeApp.ViewModels
 {
-    public class AddRecipeViewModel : BaseViewModel
+    public class AddRecipeViewModel : INotifyPropertyChanged
     {
-        // Form fields
-        public string Title { get; set; }
-        public string Description { get; set; }
-        public string ImageUrl { get; set; }
-        public string CookingTimeMinutes { get; set; } // keep as string for easy binding
-        public string Ingredients { get; set; }
-        public string Instructions { get; set; }
+        private readonly IRecipeRepository _repository;
+        private readonly IDialogService _dialogService;
+        private readonly INavigationService _navigationService;
+        private readonly IUserService _userService;
 
-        public ICommand SaveRecipeCommand { get; }
-
-        public AddRecipeViewModel()
+        public AddRecipeViewModel(
+            IRecipeRepository repository,
+            IDialogService dialogService,
+            INavigationService navigationService,
+            IUserService userService)
         {
-            SaveRecipeCommand = new Command(OnSaveRecipe);
+            _repository = repository;
+            _dialogService = dialogService;
+            _navigationService = navigationService;
+            _userService = userService;
+
+            SaveRecipeCommand = new AsyncRelayCommand(OnSaveRecipeAsync);
         }
 
-        private async void OnSaveRecipe()
+        private string _title;
+        public string Title
         {
-            // Basic validation
+            get => _title;
+            set { _title = value; OnPropertyChanged(); }
+        }
+
+        private string _description;
+        public string Description
+        {
+            get => _description;
+            set { _description = value; OnPropertyChanged(); }
+        }
+
+        private string _imageUrl;
+        public string ImageUrl
+        {
+            get => _imageUrl;
+            set { _imageUrl = value; OnPropertyChanged(); }
+        }
+
+        private string _cookingTimeMinutes;
+        public string CookingTimeMinutes
+        {
+            get => _cookingTimeMinutes;
+            set { _cookingTimeMinutes = value; OnPropertyChanged(); }
+        }
+
+        private string _ingredients;
+        public string Ingredients
+        {
+            get => _ingredients;
+            set { _ingredients = value; OnPropertyChanged(); }
+        }
+
+        private string _instructions;
+        public string Instructions
+        {
+            get => _instructions;
+            set { _instructions = value; OnPropertyChanged(); }
+        }
+
+        public IAsyncRelayCommand SaveRecipeCommand { get; }
+
+        private async Task OnSaveRecipeAsync()
+        {
             if (string.IsNullOrWhiteSpace(Title))
             {
-                await Application.Current.MainPage.DisplayAlert("Error", "Title is required", "OK");
+                await _dialogService.ShowAlertAsync("Error", "Title is required", "OK");
                 return;
             }
 
-            // Convert CookingTimeMinutes to int
-            int cookingTime = 0;
-            if (!int.TryParse(CookingTimeMinutes, out cookingTime))
-                cookingTime = 0;
+            int cookingTime = int.TryParse(CookingTimeMinutes, out var minutes) ? minutes : 0;
 
-            // Convert Ingredients string to list
             var ingredientList = new List<string>();
             if (!string.IsNullOrWhiteSpace(Ingredients))
             {
@@ -48,7 +94,6 @@ namespace RecipeApp.ViewModels
                 }
             }
 
-            // Create new recipe
             var newRecipe = new Recipe
             {
                 Title = Title,
@@ -57,14 +102,17 @@ namespace RecipeApp.ViewModels
                 CookingTimeMinutes = cookingTime,
                 Ingredients = ingredientList,
                 Instructions = Instructions,
-                Author = RecipeListViewModel.CurrentAuthor
+                Author = _userService.CurrentUser
             };
 
-            // Add to the shared static collection
-            RecipeListViewModel.RecipesStore.Add(newRecipe);
+            await _repository.AddRecipeAsync(newRecipe);
 
-            // Navigate back to the list page
-            await Shell.Current.GoToAsync("..");
+            // No reload needed; ObservableCollection updates the UI automatically
+            await _navigationService.GoBackAsync();
         }
+
+        public event PropertyChangedEventHandler PropertyChanged;
+        protected void OnPropertyChanged([CallerMemberName] string propertyName = "")
+            => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }

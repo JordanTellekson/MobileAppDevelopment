@@ -3,48 +3,41 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:RecipeApp.ViewModels"
              xmlns:conv="clr-namespace:RecipeApp.Converters"
-             x:Class="RecipeApp.Views.RecipeListPage">
+             x:Class="RecipeApp.Views.RecipeListPage"
+             x:Name="PageRoot">
 
-    <!-- Page Resources -->
     <ContentPage.Resources>
         <ResourceDictionary>
             <conv:AuthorToButtonVisibilityConverter x:Key="AuthorToButtonVisibilityConverter" />
         </ResourceDictionary>
     </ContentPage.Resources>
 
-    <!-- BindingContext -->
-    <ContentPage.BindingContext>
-        <vm:RecipeListViewModel />
-    </ContentPage.BindingContext>
-
-    <!-- Toolbar -->
     <ContentPage.ToolbarItems>
         <ToolbarItem Text="Add" Command="{Binding AddRecipeCommand}" />
     </ContentPage.ToolbarItems>
 
-    <!-- Recipe List -->
-    <CollectionView ItemsSource="{Binding Recipes}">
+    <CollectionView x:Name="RecipeCollection" ItemsSource="{Binding Recipes}">
         <CollectionView.ItemTemplate>
             <DataTemplate>
                 <Frame Margin="10" Padding="10" CornerRadius="12" HasShadow="True">
                     <Frame.GestureRecognizers>
-                        <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type vm:RecipeListViewModel}}, Path=RecipeTappedCommand}" 
-                                              CommandParameter="{Binding .}" />
+                        <TapGestureRecognizer 
+                            Command="{Binding BindingContext.RecipeTappedCommand, Source={x:Reference RecipeCollection}}"
+                            CommandParameter="{Binding .}" />
                     </Frame.GestureRecognizers>
 
                     <StackLayout>
                         <Image Source="{Binding ImageUrl}" HeightRequest="150" Aspect="AspectFill"/>
                         <Label Text="{Binding Title}" FontSize="18" FontAttributes="Bold"/>
                         <Label Text="{Binding Description}" FontSize="14" TextColor="Gray"/>
-                        <Label Text="{Binding Author, StringFormat='By: {0}'}"
-                           FontSize="18"
-                           TextColor="Black" />
+                        <Label Text="{Binding Author, StringFormat='By: {0}'}" FontSize="18" TextColor="Black" />
 
-                        <!-- Update Button -->
                         <Button Text="Update"
-                                IsVisible="{Binding Author, Converter={StaticResource AuthorToButtonVisibilityConverter}}"
-                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:RecipeListViewModel}}, Path=UpdateRecipeCommand}"
-                                CommandParameter="{Binding .}" />
+                            IsVisible="{Binding Author, 
+                            Converter={StaticResource AuthorToButtonVisibilityConverter}, 
+                            ConverterParameter={x:Reference PageRoot}}" 
+                            Command="{Binding BindingContext.UpdateRecipeCommand, Source={x:Reference RecipeCollection}}"
+                            CommandParameter="{Binding .}" />
                     </StackLayout>
                 </Frame>
             </DataTemplate>

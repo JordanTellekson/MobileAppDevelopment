@@ -7,6 +7,7 @@ namespace RecipeApp.Models
 {
     public class Recipe : INotifyPropertyChanged
     {
+        public Guid Id { get; set; } = Guid.NewGuid();
         private string _title;
         private string _description;
         private string _imageUrl;
