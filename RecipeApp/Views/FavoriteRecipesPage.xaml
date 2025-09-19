@@ -2,48 +2,36 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:RecipeApp.ViewModels"
-             xmlns:conv="clr-namespace:RecipeApp.Converters"
-             x:Class="RecipeApp.Views.RecipeListPage"
+             x:Class="RecipeApp.Views.FavoriteRecipesPage"
              x:Name="PageRoot"
-             Title="Recipes">
+             Title="Favorites">
 
-    <ContentPage.Resources>
-        <ResourceDictionary>
-            <conv:AuthorToButtonVisibilityConverter x:Key="AuthorToButtonVisibilityConverter" />
-        </ResourceDictionary>
-    </ContentPage.Resources>
-
-    <ContentPage.ToolbarItems>
-        <ToolbarItem Text="Add" Command="{Binding AddRecipeCommand}" />
-        <ToolbarItem Text="Favorites" Command="{Binding NavigateToFavoritesCommand}" />
-    </ContentPage.ToolbarItems>
-
-    <CollectionView x:Name="RecipeCollection" ItemsSource="{Binding Recipes}">
+    <CollectionView x:Name="FavoritesCollection" ItemsSource="{Binding Favorites}">
         <CollectionView.EmptyView>
             <StackLayout Padding="20">
-                <Label Text="No recipes available." 
-                       FontSize="18" 
-                       TextColor="Gray" 
-                       HorizontalOptions="Center" 
+                <Label Text="No favorites yet."
+                       FontSize="18"
+                       TextColor="Gray"
+                       HorizontalOptions="Center"
                        VerticalOptions="Center"/>
             </StackLayout>
         </CollectionView.EmptyView>
 
         <CollectionView.ItemTemplate>
             <DataTemplate>
-                <!-- SwipeView triggers AddToFavoritesCommand on swipe release -->
+                <!-- SwipeView triggers RemoveFromFavoritesCommand on swipe release -->
                 <SwipeView SwipeEnded="OnSwipeEnded">
                     <SwipeView.RightItems>
                         <!-- Transparent SwipeItem ensures swipe is recognized -->
                         <SwipeItems Mode="Reveal">
-                            <SwipeItem Text="Favorite" BackgroundColor="Transparent" IsEnabled="False"/>
+                            <SwipeItem Text="Remove" BackgroundColor="Transparent" IsEnabled="False"/>
                         </SwipeItems>
                     </SwipeView.RightItems>
 
                     <Frame Margin="10" Padding="10" CornerRadius="12" HasShadow="True">
                         <Frame.GestureRecognizers>
                             <TapGestureRecognizer 
-                                Command="{Binding BindingContext.RecipeTappedCommand, Source={x:Reference RecipeCollection}}"
+                                Command="{Binding BindingContext.RecipeTappedCommand, Source={x:Reference FavoritesCollection}}"
                                 CommandParameter="{Binding .}" />
                         </Frame.GestureRecognizers>
 
@@ -52,13 +40,6 @@
                             <Label Text="{Binding Title}" FontSize="18" FontAttributes="Bold"/>
                             <Label Text="{Binding Description}" FontSize="14" TextColor="Gray"/>
                             <Label Text="{Binding Author, StringFormat='By: {0}'}" FontSize="18" TextColor="Black" />
-
-                            <Button Text="Update"
-                                    IsVisible="{Binding Author, 
-                                    Converter={StaticResource AuthorToButtonVisibilityConverter}, 
-                                    ConverterParameter={x:Reference PageRoot}}" 
-                                    Command="{Binding BindingContext.UpdateRecipeCommand, Source={x:Reference RecipeCollection}}"
-                                    CommandParameter="{Binding .}" />
                         </StackLayout>
                     </Frame>
                 </SwipeView>

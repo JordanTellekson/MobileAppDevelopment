@@ -3,9 +3,9 @@ using RecipeApp.ViewModels;
 
 namespace RecipeApp.Views;
 
-public partial class RecipeListPage : ContentPage
+public partial class FavoriteRecipesPage : ContentPage
 {
-    public RecipeListPage(RecipeListViewModel viewModel)
+    public FavoriteRecipesPage(FavoriteRecipesViewModel viewModel)
     {
         InitializeComponent();
         BindingContext = viewModel;
@@ -15,9 +15,9 @@ public partial class RecipeListPage : ContentPage
     {
         if (sender is SwipeView swipeView && swipeView.BindingContext is Recipe recipe)
         {
-            if (BindingContext is RecipeListViewModel vm)
+            if (BindingContext is FavoriteRecipesViewModel vm)
             {
-                vm.AddToFavoritesCommand?.Execute(recipe);
+                vm.RemoveFromFavoritesCommand?.Execute(recipe);
             }
             swipeView.Close(); // reset swipe visually
         }

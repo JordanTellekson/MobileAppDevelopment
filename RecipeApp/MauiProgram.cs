@@ -33,11 +33,13 @@ namespace RecipeApp
             builder.Services.AddTransient<AddRecipeViewModel>();
             builder.Services.AddTransient<RecipeDetailViewModel>();
             builder.Services.AddTransient<UpdateRecipeViewModel>();
+            builder.Services.AddTransient<FavoriteRecipesViewModel>();
 
             builder.Services.AddTransient<RecipeListPage>();
             builder.Services.AddTransient<AddRecipePage>();
             builder.Services.AddTransient<RecipeDetailPage>();
             builder.Services.AddTransient<UpdateRecipePage>();
+            builder.Services.AddTransient<FavoriteRecipesPage>();
 
             return builder.Build();
         }

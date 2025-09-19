@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.Input;
 using RecipeApp.Models;
 using RecipeApp.Services;
+using System.Collections.Generic;
 
 namespace RecipeApp.ViewModels
 {
@@ -33,6 +34,8 @@ namespace RecipeApp.ViewModels
             RecipeTappedCommand = new AsyncRelayCommand<Recipe>(OnRecipeTappedAsync);
             AddRecipeCommand = new AsyncRelayCommand(OnAddRecipeAsync);
             UpdateRecipeCommand = new AsyncRelayCommand<Recipe>(OnUpdateRecipeAsync);
+            AddToFavoritesCommand = new RelayCommand<Recipe>(OnAddToFavorites);
+            NavigateToFavoritesCommand = new RelayCommand(OnNavigateToFavorites);
         }
 
         public ObservableCollection<Recipe> Recipes { get; }
@@ -53,12 +56,13 @@ namespace RecipeApp.ViewModels
         public IAsyncRelayCommand<Recipe> RecipeTappedCommand { get; }
         public IAsyncRelayCommand AddRecipeCommand { get; }
         public IAsyncRelayCommand<Recipe> UpdateRecipeCommand { get; }
+        public IRelayCommand<Recipe> AddToFavoritesCommand { get; }
+        public IRelayCommand NavigateToFavoritesCommand { get; }
 
         private async Task OnRecipeTappedAsync(Recipe recipe)
         {
             if (recipe == null) return;
 
-            // Pass only the Recipe Id to RecipeDetailPage
             var parameters = new Dictionary<string, object>
             {
                 { "RecipeId", recipe.Id.ToString() }
@@ -70,7 +74,6 @@ namespace RecipeApp.ViewModels
         private async Task OnAddRecipeAsync()
         {
             await _navigationService.NavigateToAsync(nameof(Views.AddRecipePage));
-            // No need to reload—Recipes updates automatically
         }
 
         private async Task OnUpdateRecipeAsync(Recipe recipe)
@@ -83,7 +86,26 @@ namespace RecipeApp.ViewModels
             };
 
             await _navigationService.NavigateToAsync(nameof(Views.UpdateRecipePage), parameters);
-            // No need to reload—Recipes updates automatically
+        }
+
+        private async void OnAddToFavorites(Recipe recipe)
+        {
+            if (recipe == null) return;
+
+            if (_repository.AddToFavorites(recipe))
+            {
+                await _dialogService.ShowAlertAsync("Added to Favorites", $"{recipe.Title} was added to your favorites.", "OK");
+            }
+            else
+            {
+                await _dialogService.ShowAlertAsync("Already a Favorite", $"{recipe.Title} is already in your favorites.", "OK");
+            }
+        }
+
+        private async void OnNavigateToFavorites()
+        {
+            // Navigate to FavoritesPage
+            await _navigationService.NavigateToAsync(nameof(Views.FavoriteRecipesPage));
         }
 
         public event PropertyChangedEventHandler PropertyChanged;

@@ -10,6 +10,7 @@ namespace RecipeApp.Services
     {
         // ObservableCollection drives the UI automatically
         public ObservableCollection<Recipe> Recipes { get; } = new ObservableCollection<Recipe>();
+        public ObservableCollection<Recipe> Favorites { get; } = new ObservableCollection<Recipe>();
 
         public RecipeRepository()
         {
@@ -59,7 +60,6 @@ namespace RecipeApp.Services
             var existing = Recipes.FirstOrDefault(r => r.Id == recipe.Id);
             if (existing != null)
             {
-                // Update properties in-place so UI binding works
                 existing.Title = recipe.Title;
                 existing.Description = recipe.Description;
                 existing.ImageUrl = recipe.ImageUrl;
@@ -85,6 +85,24 @@ namespace RecipeApp.Services
                 Recipes.Remove(recipe);
 
             return Task.CompletedTask;
+        }
+
+        public bool AddToFavorites(Recipe recipe)
+        {
+            if (recipe == null) return false;
+
+            if (Favorites.Any(r => r.Id == recipe.Id))
+                return false; // already a favorite
+
+            Favorites.Add(recipe);
+            return true;
+        }
+
+        public bool RemoveFromFavorites(Recipe recipe)
+        {
+            if (recipe == null) return false;
+
+            return Favorites.Remove(recipe);
         }
     }
 }
