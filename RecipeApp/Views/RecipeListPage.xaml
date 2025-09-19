@@ -5,7 +5,8 @@
              xmlns:conv="clr-namespace:RecipeApp.Converters"
              x:Class="RecipeApp.Views.RecipeListPage"
              x:Name="PageRoot"
-             Title="Recipes">
+             Title="Recipes"
+             BackgroundColor="{DynamicResource PageBackgroundColor}">
 
     <ContentPage.Resources>
         <ResourceDictionary>
@@ -16,6 +17,9 @@
     <ContentPage.ToolbarItems>
         <ToolbarItem Text="Add" Command="{Binding AddRecipeCommand}" />
         <ToolbarItem Text="Favorites" Command="{Binding NavigateToFavoritesCommand}" />
+        <ToolbarItem x:Name="ThemeToggleButton" 
+                 Text="{Binding ThemeButtonText}" 
+                 Command="{Binding ToggleThemeCommand}" />
     </ContentPage.ToolbarItems>
 
     <CollectionView x:Name="RecipeCollection" ItemsSource="{Binding Recipes}">
@@ -23,7 +27,7 @@
             <StackLayout Padding="20">
                 <Label Text="No recipes available." 
                        FontSize="18" 
-                       TextColor="Gray" 
+                       TextColor="{DynamicResource SecondaryTextColor}" 
                        HorizontalOptions="Center" 
                        VerticalOptions="Center"/>
             </StackLayout>
@@ -40,7 +44,8 @@
                         </SwipeItems>
                     </SwipeView.RightItems>
 
-                    <Frame Margin="10" Padding="10" CornerRadius="12" HasShadow="True">
+                    <Frame Margin="10" Padding="10" CornerRadius="12" HasShadow="True"
+                           BackgroundColor="{DynamicResource CardBackgroundColor}">
                         <Frame.GestureRecognizers>
                             <TapGestureRecognizer 
                                 Command="{Binding BindingContext.RecipeTappedCommand, Source={x:Reference RecipeCollection}}"
@@ -49,16 +54,21 @@
 
                         <StackLayout>
                             <Image Source="{Binding ImageUrl}" HeightRequest="150" Aspect="AspectFill"/>
-                            <Label Text="{Binding Title}" FontSize="18" FontAttributes="Bold"/>
-                            <Label Text="{Binding Description}" FontSize="14" TextColor="Gray"/>
-                            <Label Text="{Binding Author, StringFormat='By: {0}'}" FontSize="18" TextColor="Black" />
+                            <Label Text="{Binding Title}" FontSize="18" FontAttributes="Bold"
+                                   TextColor="{DynamicResource PrimaryTextColor}"/>
+                            <Label Text="{Binding Description}" FontSize="14"
+                                   TextColor="{DynamicResource SecondaryTextColor}"/>
+                            <Label Text="{Binding Author, StringFormat='By: {0}'}" FontSize="18"
+                                   TextColor="{DynamicResource PrimaryTextColor}" />
 
                             <Button Text="Update"
                                     IsVisible="{Binding Author, 
                                     Converter={StaticResource AuthorToButtonVisibilityConverter}, 
                                     ConverterParameter={x:Reference PageRoot}}" 
                                     Command="{Binding BindingContext.UpdateRecipeCommand, Source={x:Reference RecipeCollection}}"
-                                    CommandParameter="{Binding .}" />
+                                    CommandParameter="{Binding .}"
+                                    BackgroundColor="{DynamicResource ButtonBackgroundColor}"
+                                    TextColor="{DynamicResource ButtonTextColor}" />
                         </StackLayout>
                     </Frame>
                 </SwipeView>

@@ -1,12 +1,13 @@
-﻿using System;
+﻿using CommunityToolkit.Mvvm.Input;
+using RecipeApp.Models;
+using RecipeApp.Resources.Styles;
+using RecipeApp.Services;
+using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
-using CommunityToolkit.Mvvm.Input;
-using RecipeApp.Models;
-using RecipeApp.Services;
-using System.Collections.Generic;
 
 namespace RecipeApp.ViewModels
 {
@@ -36,11 +37,16 @@ namespace RecipeApp.ViewModels
             UpdateRecipeCommand = new AsyncRelayCommand<Recipe>(OnUpdateRecipeAsync);
             AddToFavoritesCommand = new RelayCommand<Recipe>(OnAddToFavorites);
             NavigateToFavoritesCommand = new RelayCommand(OnNavigateToFavorites);
+            ToggleThemeCommand = new RelayCommand(ToggleTheme);
         }
 
         public ObservableCollection<Recipe> Recipes { get; }
 
         public string CurrentUser => _userService.CurrentUser;
+
+        private bool _isDarkMode = false;
+
+        public string ThemeButtonText => _isDarkMode ? "Light Mode" : "Dark Mode";
 
         private bool _isLoading;
         public bool IsLoading
@@ -58,6 +64,7 @@ namespace RecipeApp.ViewModels
         public IAsyncRelayCommand<Recipe> UpdateRecipeCommand { get; }
         public IRelayCommand<Recipe> AddToFavoritesCommand { get; }
         public IRelayCommand NavigateToFavoritesCommand { get; }
+        public IRelayCommand ToggleThemeCommand { get; }
 
         private async Task OnRecipeTappedAsync(Recipe recipe)
         {
@@ -106,6 +113,25 @@ namespace RecipeApp.ViewModels
         {
             // Navigate to FavoritesPage
             await _navigationService.NavigateToAsync(nameof(Views.FavoriteRecipesPage));
+        }
+
+        private void ToggleTheme()
+        {
+            _isDarkMode = !_isDarkMode;
+
+            // Update the theme in App.Current.Resources
+            App.Current.Resources.MergedDictionaries.Clear();
+            if (_isDarkMode)
+            {
+                App.Current.Resources.MergedDictionaries.Add(new DarkTheme());
+            }
+            else
+            {
+                App.Current.Resources.MergedDictionaries.Add(new LightTheme());
+            }
+
+            // Notify button text to update
+            OnPropertyChanged(nameof(ThemeButtonText));
         }
 
         public event PropertyChangedEventHandler PropertyChanged;

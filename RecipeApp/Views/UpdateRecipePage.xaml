@@ -2,21 +2,64 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="RecipeApp.Views.UpdateRecipePage"
-             Title="Update Recipe">
+             Title="Update Recipe"
+             BackgroundColor="{DynamicResource PageBackgroundColor}">
 
     <ScrollView>
         <VerticalStackLayout Padding="15" Spacing="10">
 
-            <Entry Placeholder="Title" Text="{Binding Title}" />
-            <Editor Placeholder="Description" Text="{Binding Description}" HeightRequest="60" />
-            <Entry Placeholder="Image URL" Text="{Binding ImageUrl}" />
-            <Entry Placeholder="Cooking Time (minutes)" Keyboard="Numeric" Text="{Binding CookingTimeMinutes}" />
-            <Editor Placeholder="Ingredients (comma-separated)" Text="{Binding Ingredients}" HeightRequest="80" />
-            <Editor Placeholder="Instructions" Text="{Binding Instructions}" HeightRequest="120" />
+            <Entry Placeholder="Title" 
+                   PlaceholderColor="{DynamicResource PlaceholderTextColor}"
+                   Text="{Binding Title}" 
+                   BackgroundColor="{DynamicResource EntryBackgroundColor}" 
+                   TextColor="{DynamicResource PrimaryTextColor}" />
+
+            <Editor Placeholder="Description" 
+                    PlaceholderColor="{DynamicResource PlaceholderTextColor}"
+                    Text="{Binding Description}" 
+                    HeightRequest="60"
+                    BackgroundColor="{DynamicResource EntryBackgroundColor}" 
+                    TextColor="{DynamicResource PrimaryTextColor}" />
+
+            <Entry Placeholder="Image URL" 
+                   PlaceholderColor="{DynamicResource PlaceholderTextColor}"
+                   Text="{Binding ImageUrl}" 
+                   BackgroundColor="{DynamicResource EntryBackgroundColor}" 
+                   TextColor="{DynamicResource PrimaryTextColor}" />
+
+            <Entry Placeholder="Cooking Time (minutes)" 
+                   PlaceholderColor="{DynamicResource PlaceholderTextColor}"
+                   Keyboard="Numeric" 
+                   Text="{Binding CookingTimeMinutes}" 
+                   BackgroundColor="{DynamicResource EntryBackgroundColor}" 
+                   TextColor="{DynamicResource PrimaryTextColor}" />
+
+            <Editor Placeholder="Ingredients (comma-separated)" 
+                    PlaceholderColor="{DynamicResource PlaceholderTextColor}"
+                    Text="{Binding Ingredients}" 
+                    HeightRequest="80"
+                    BackgroundColor="{DynamicResource EntryBackgroundColor}" 
+                    TextColor="{DynamicResource PrimaryTextColor}" />
+
+            <Editor Placeholder="Instructions" 
+                    PlaceholderColor="{DynamicResource PlaceholderTextColor}"
+                    Text="{Binding Instructions}" 
+                    HeightRequest="120"
+                    BackgroundColor="{DynamicResource EntryBackgroundColor}" 
+                    TextColor="{DynamicResource PrimaryTextColor}" />
 
             <HorizontalStackLayout Spacing="10">
-                <Button Text="Save" Command="{Binding SaveCommand}" />
-                <Button Text="Cancel" Command="{Binding CancelCommand}" />
+                <Button Text="Save" 
+                        Command="{Binding SaveCommand}" 
+                        BackgroundColor="{DynamicResource ButtonBackgroundColor}" 
+                        TextColor="{DynamicResource ButtonTextColor}" 
+                        CornerRadius="8" />
+
+                <Button Text="Cancel" 
+                        Command="{Binding CancelCommand}" 
+                        BackgroundColor="{DynamicResource ButtonBackgroundColor}" 
+                        TextColor="{DynamicResource ButtonTextColor}" 
+                        CornerRadius="8" />
             </HorizontalStackLayout>
 
         </VerticalStackLayout>

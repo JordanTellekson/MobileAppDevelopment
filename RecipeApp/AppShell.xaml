@@ -6,7 +6,10 @@
     xmlns:local="clr-namespace:RecipeApp"
     xmlns:views="clr-namespace:RecipeApp.Views"
     Shell.FlyoutBehavior="Disabled"
-    Title="RecipeApp">
+    Title="RecipeApp"
+    Shell.BackgroundColor="{StaticResource ToolbarColor}"
+    Shell.TitleColor="{StaticResource ToolbarTextColor}"
+    Shell.ForegroundColor="{StaticResource ToolbarTextColor}">
 
     <ShellContent Title="Recipes" ContentTemplate="{DataTemplate views:RecipeListPage}" />
 

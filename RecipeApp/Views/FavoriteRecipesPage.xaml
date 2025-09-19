@@ -4,14 +4,15 @@
              xmlns:vm="clr-namespace:RecipeApp.ViewModels"
              x:Class="RecipeApp.Views.FavoriteRecipesPage"
              x:Name="PageRoot"
-             Title="Favorites">
+             Title="Favorites"
+             BackgroundColor="{DynamicResource PageBackgroundColor}">
 
     <CollectionView x:Name="FavoritesCollection" ItemsSource="{Binding Favorites}">
         <CollectionView.EmptyView>
             <StackLayout Padding="20">
                 <Label Text="No favorites yet."
                        FontSize="18"
-                       TextColor="Gray"
+                       TextColor="{DynamicResource SecondaryTextColor}"
                        HorizontalOptions="Center"
                        VerticalOptions="Center"/>
             </StackLayout>
@@ -28,7 +29,8 @@
                         </SwipeItems>
                     </SwipeView.RightItems>
 
-                    <Frame Margin="10" Padding="10" CornerRadius="12" HasShadow="True">
+                    <Frame Margin="10" Padding="10" CornerRadius="12" HasShadow="True"
+                           BackgroundColor="{DynamicResource CardBackgroundColor}">
                         <Frame.GestureRecognizers>
                             <TapGestureRecognizer 
                                 Command="{Binding BindingContext.RecipeTappedCommand, Source={x:Reference FavoritesCollection}}"
@@ -36,10 +38,23 @@
                         </Frame.GestureRecognizers>
 
                         <StackLayout>
-                            <Image Source="{Binding ImageUrl}" HeightRequest="150" Aspect="AspectFill"/>
-                            <Label Text="{Binding Title}" FontSize="18" FontAttributes="Bold"/>
-                            <Label Text="{Binding Description}" FontSize="14" TextColor="Gray"/>
-                            <Label Text="{Binding Author, StringFormat='By: {0}'}" FontSize="18" TextColor="Black" />
+                            <Grid>
+                                <Image Source="{Binding ImageUrl}" HeightRequest="150" Aspect="AspectFill"/>
+                                <!-- Heart icon overlay for favorite -->
+                                <Image Source="heart.png"
+                                       HorizontalOptions="End"
+                                       VerticalOptions="Start"
+                                       HeightRequest="24"
+                                       WidthRequest="24"
+                                       IsVisible="True"/>
+                            </Grid>
+
+                            <Label Text="{Binding Title}" FontSize="18" FontAttributes="Bold"
+                                   TextColor="{DynamicResource PrimaryTextColor}"/>
+                            <Label Text="{Binding Description}" FontSize="14"
+                                   TextColor="{DynamicResource SecondaryTextColor}"/>
+                            <Label Text="{Binding Author, StringFormat='By: {0}'}" FontSize="18"
+                                   TextColor="{DynamicResource PrimaryTextColor}" />
                         </StackLayout>
                     </Frame>
                 </SwipeView>
