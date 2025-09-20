@@ -18,8 +18,8 @@
         <ToolbarItem Text="Add" Command="{Binding AddRecipeCommand}" />
         <ToolbarItem Text="Favorites" Command="{Binding NavigateToFavoritesCommand}" />
         <ToolbarItem x:Name="ThemeToggleButton" 
-                 Text="{Binding ThemeButtonText}" 
-                 Command="{Binding ToggleThemeCommand}" />
+                     Text="{Binding ThemeButtonText}" 
+                     Command="{Binding ToggleThemeCommand}" />
     </ContentPage.ToolbarItems>
 
     <CollectionView x:Name="RecipeCollection" ItemsSource="{Binding Recipes}">
@@ -38,7 +38,6 @@
                 <!-- SwipeView triggers AddToFavoritesCommand on swipe release -->
                 <SwipeView SwipeEnded="OnSwipeEnded">
                     <SwipeView.RightItems>
-                        <!-- Transparent SwipeItem ensures swipe is recognized -->
                         <SwipeItems Mode="Reveal">
                             <SwipeItem Text="Favorite" BackgroundColor="Transparent" IsEnabled="False"/>
                         </SwipeItems>
@@ -53,7 +52,17 @@
                         </Frame.GestureRecognizers>
 
                         <StackLayout>
-                            <Image Source="{Binding ImageUrl}" HeightRequest="150" Aspect="AspectFill"/>
+                            <Grid>
+                                <Image Source="{Binding ImageUrl}" HeightRequest="150" Aspect="AspectFill"/>
+                                <Label Text="♥"
+                                       FontSize="24"
+                                       TextColor="Red"
+                                       HorizontalOptions="End"
+                                       VerticalOptions="Start"
+                                       Margin="5"
+                                       IsVisible="{Binding IsFavorite}" />
+                            </Grid>
+
                             <Label Text="{Binding Title}" FontSize="18" FontAttributes="Bold"
                                    TextColor="{DynamicResource PrimaryTextColor}"/>
                             <Label Text="{Binding Description}" FontSize="14"
@@ -63,8 +72,8 @@
 
                             <Button Text="Update"
                                     IsVisible="{Binding Author, 
-                                    Converter={StaticResource AuthorToButtonVisibilityConverter}, 
-                                    ConverterParameter={x:Reference PageRoot}}" 
+                                        Converter={StaticResource AuthorToButtonVisibilityConverter}, 
+                                        ConverterParameter={x:Reference PageRoot}}" 
                                     Command="{Binding BindingContext.UpdateRecipeCommand, Source={x:Reference RecipeCollection}}"
                                     CommandParameter="{Binding .}"
                                     BackgroundColor="{DynamicResource ButtonBackgroundColor}"

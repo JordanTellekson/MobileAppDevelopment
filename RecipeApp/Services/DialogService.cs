@@ -8,9 +8,11 @@ namespace RecipeApp.Services
 {
     public class DialogService : IDialogService
     {
-        public Task ShowAlertAsync(string title, string message, string buttonText)
+        public async Task ShowAlertAsync(string title, string message, string buttonText)
         {
-            return Application.Current.MainPage.DisplayAlert(title, message, buttonText);
+            await Application.Current.MainPage.Navigation.PushModalAsync(
+                new Popups.AlertPage(title, message)
+            );
         }
     }
 }

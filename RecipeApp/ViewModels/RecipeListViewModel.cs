@@ -102,6 +102,7 @@ namespace RecipeApp.ViewModels
             if (_repository.AddToFavorites(recipe))
             {
                 await _dialogService.ShowAlertAsync("Added to Favorites", $"{recipe.Title} was added to your favorites.", "OK");
+                recipe.IsFavorite = true;
             }
             else
             {

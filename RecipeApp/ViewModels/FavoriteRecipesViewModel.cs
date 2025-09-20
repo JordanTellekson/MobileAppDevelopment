@@ -56,6 +56,7 @@ namespace RecipeApp.ViewModels
             if (_repository.RemoveFromFavorites(recipe))
             {
                 await _dialogService.ShowAlertAsync("Removed", $"{recipe.Title} removed from favorites.", "OK");
+                recipe.IsFavorite = false;
             }
         }
 

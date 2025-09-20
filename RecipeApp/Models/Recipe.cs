@@ -15,6 +15,7 @@ namespace RecipeApp.Models
         private string _instructions;
         private int _cookingTimeMinutes;
         private string _author;
+        private bool _isFavorite;
 
         public string Title
         {
@@ -56,6 +57,12 @@ namespace RecipeApp.Models
         {
             get => _author;
             set => SetProperty(ref _author, value);
+        }
+
+        public bool IsFavorite
+        {
+            get => _isFavorite;
+            set => SetProperty(ref _isFavorite, value);
         }
 
         public event PropertyChangedEventHandler PropertyChanged;

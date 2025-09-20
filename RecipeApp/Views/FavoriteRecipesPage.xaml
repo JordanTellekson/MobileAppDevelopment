@@ -30,31 +30,30 @@
                     </SwipeView.RightItems>
 
                     <Frame Margin="10" Padding="10" CornerRadius="12" HasShadow="True"
-                           BackgroundColor="{DynamicResource CardBackgroundColor}">
+                   BackgroundColor="{DynamicResource CardBackgroundColor}">
                         <Frame.GestureRecognizers>
                             <TapGestureRecognizer 
-                                Command="{Binding BindingContext.RecipeTappedCommand, Source={x:Reference FavoritesCollection}}"
-                                CommandParameter="{Binding .}" />
+                        Command="{Binding BindingContext.RecipeTappedCommand, Source={x:Reference FavoritesCollection}}"
+                        CommandParameter="{Binding .}" />
                         </Frame.GestureRecognizers>
 
                         <StackLayout>
                             <Grid>
                                 <Image Source="{Binding ImageUrl}" HeightRequest="150" Aspect="AspectFill"/>
-                                <!-- Heart icon overlay for favorite -->
-                                <Image Source="heart.png"
-                                       HorizontalOptions="End"
-                                       VerticalOptions="Start"
-                                       HeightRequest="24"
-                                       WidthRequest="24"
-                                       IsVisible="True"/>
+                                <Label Text="♥"
+                               FontSize="24"
+                               TextColor="Red"
+                               HorizontalOptions="End"
+                               VerticalOptions="Start"
+                               Margin="5"/>
                             </Grid>
 
                             <Label Text="{Binding Title}" FontSize="18" FontAttributes="Bold"
-                                   TextColor="{DynamicResource PrimaryTextColor}"/>
+                           TextColor="{DynamicResource PrimaryTextColor}"/>
                             <Label Text="{Binding Description}" FontSize="14"
-                                   TextColor="{DynamicResource SecondaryTextColor}"/>
+                           TextColor="{DynamicResource SecondaryTextColor}"/>
                             <Label Text="{Binding Author, StringFormat='By: {0}'}" FontSize="18"
-                                   TextColor="{DynamicResource PrimaryTextColor}" />
+                           TextColor="{DynamicResource PrimaryTextColor}" />
                         </StackLayout>
                     </Frame>
                 </SwipeView>
