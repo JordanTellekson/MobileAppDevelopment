@@ -24,5 +24,8 @@
     
     <!-- Card Border -->
     <Color x:Key="CardBorderColor">#444444</Color>
-    
+
+    <!-- Button Background Color -->
+    <Color x:Key="ButtonBackgroundColor">#B22222</Color>
+
 </ResourceDictionary>
