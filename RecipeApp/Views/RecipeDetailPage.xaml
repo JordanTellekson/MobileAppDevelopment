@@ -11,15 +11,6 @@
                    BackgroundColor="{DynamicResource CardBackgroundColor}">
 
                 <Grid RowDefinitions="Auto,*">
-                    <!-- Heart positioned slightly higher and tighter -->
-                    <Label Text="♥"
-                           FontSize="30"
-                           TextColor="Red"
-                           HorizontalOptions="End"
-                           VerticalOptions="Start"
-                           Margin="0,0,5,0"
-                           IsVisible="{Binding Recipe.IsFavorite}" />
-
                     <VerticalStackLayout Grid.Row="1" Padding="10">
                         <Image Source="{Binding Recipe.ImageUrl}" 
                                HeightRequest="200" Aspect="AspectFill"/>
