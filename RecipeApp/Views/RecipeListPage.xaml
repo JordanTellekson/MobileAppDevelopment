@@ -44,7 +44,8 @@
                     </SwipeView.RightItems>
 
                     <Frame Margin="10" Padding="10" CornerRadius="12" HasShadow="True"
-                           BackgroundColor="{DynamicResource CardBackgroundColor}">
+                           BackgroundColor="{DynamicResource CardBackgroundColor}"
+                           BorderColor="{DynamicResource CardBorderColor}">
                         <Frame.GestureRecognizers>
                             <TapGestureRecognizer 
                                 Command="{Binding BindingContext.RecipeTappedCommand, Source={x:Reference RecipeCollection}}"

@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.Logging;
 using RecipeApp.Models;
 using RecipeApp.Services;
 
@@ -15,17 +16,20 @@ namespace RecipeApp.ViewModels
         private readonly IDialogService _dialogService;
         private readonly INavigationService _navigationService;
         private readonly IUserService _userService;
+        private readonly ILogger<AddRecipeViewModel> _logger;
 
         public AddRecipeViewModel(
             IRecipeRepository repository,
             IDialogService dialogService,
             INavigationService navigationService,
-            IUserService userService)
+            IUserService userService,
+            ILogger<AddRecipeViewModel> logger)
         {
             _repository = repository;
             _dialogService = dialogService;
             _navigationService = navigationService;
             _userService = userService;
+            _logger = logger;
 
             SaveRecipeCommand = new AsyncRelayCommand(OnSaveRecipeAsync);
         }
@@ -76,8 +80,11 @@ namespace RecipeApp.ViewModels
 
         private async Task OnSaveRecipeAsync()
         {
+            _logger.LogInformation("SaveRecipeCommand triggered");
+
             if (string.IsNullOrWhiteSpace(Title))
             {
+                _logger.LogWarning("Save attempted with empty Title");
                 await _dialogService.ShowAlertAsync("Error", "Title is required", "OK");
                 return;
             }
@@ -105,10 +112,20 @@ namespace RecipeApp.ViewModels
                 Author = _userService.CurrentUser
             };
 
-            await _repository.AddRecipeAsync(newRecipe);
+            try
+            {
+                _logger.LogInformation("Adding recipe: {Title} by {Author}", newRecipe.Title, newRecipe.Author);
+                await _repository.AddRecipeAsync(newRecipe);
+                _logger.LogInformation("Recipe added successfully: {Title}", newRecipe.Title);
 
-            // No reload needed; ObservableCollection updates the UI automatically
-            await _navigationService.GoBackAsync();
+                await _navigationService.GoBackAsync();
+                _logger.LogDebug("Navigation back after adding recipe completed");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while saving recipe: {Title}", newRecipe.Title);
+                await _dialogService.ShowAlertAsync("Error", "Failed to save recipe", "OK");
+            }
         }
 
         public event PropertyChangedEventHandler PropertyChanged;

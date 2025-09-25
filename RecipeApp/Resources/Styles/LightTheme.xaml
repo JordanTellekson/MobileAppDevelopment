@@ -22,4 +22,7 @@
     <!-- Placeholder text color -->
     <Color x:Key="PlaceholderTextColor">#777777</Color>
 
+    <!-- Card Border -->
+    <Color x:Key="CardBorderColor">#FFFFFF</Color>
+
 </ResourceDictionary>

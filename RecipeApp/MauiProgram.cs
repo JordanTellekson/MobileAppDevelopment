@@ -21,6 +21,7 @@ namespace RecipeApp
 
 #if DEBUG
     		builder.Logging.AddDebug();
+            builder.Logging.SetMinimumLevel(LogLevel.Debug);
 #endif
 
             builder.Services.AddSingleton<IRecipeRepository, RecipeRepository>();

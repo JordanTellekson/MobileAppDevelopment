@@ -3,17 +3,18 @@ using System;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace RecipeApp.Services
 {
     public class RecipeRepository : IRecipeRepository
     {
-        // ObservableCollection drives the UI automatically
-        public ObservableCollection<Recipe> Recipes { get; } = new ObservableCollection<Recipe>();
-        public ObservableCollection<Recipe> Favorites { get; } = new ObservableCollection<Recipe>();
+        private readonly ILogger<RecipeRepository> _logger;
 
-        public RecipeRepository()
+        public RecipeRepository(ILogger<RecipeRepository> logger)
         {
+            _logger = logger;
+
             // Seed sample data
             Recipes.Add(new Recipe
             {
@@ -40,22 +41,25 @@ namespace RecipeApp.Services
             });
         }
 
+        public ObservableCollection<Recipe> Recipes { get; } = new ObservableCollection<Recipe>();
+        public ObservableCollection<Recipe> Favorites { get; } = new ObservableCollection<Recipe>();
+
         public Task AddRecipeAsync(Recipe recipe)
         {
-            if (recipe == null)
-                throw new ArgumentNullException(nameof(recipe));
+            if (recipe == null) throw new ArgumentNullException(nameof(recipe));
 
             if (recipe.Id == Guid.Empty)
                 recipe.Id = Guid.NewGuid();
 
             Recipes.Add(recipe);
+            _logger.LogInformation("Recipe added: {Title} by {Author}", recipe.Title, recipe.Author);
+
             return Task.CompletedTask;
         }
 
         public Task UpdateRecipeAsync(Recipe recipe)
         {
-            if (recipe == null)
-                throw new ArgumentNullException(nameof(recipe));
+            if (recipe == null) throw new ArgumentNullException(nameof(recipe));
 
             var existing = Recipes.FirstOrDefault(r => r.Id == recipe.Id);
             if (existing != null)
@@ -67,6 +71,12 @@ namespace RecipeApp.Services
                 existing.Ingredients = recipe.Ingredients;
                 existing.Instructions = recipe.Instructions;
                 existing.Author = recipe.Author;
+
+                _logger.LogInformation("Recipe updated: {Title} by {Author}", recipe.Title, recipe.Author);
+            }
+            else
+            {
+                _logger.LogWarning("Update failed: Recipe with Id {Id} not found", recipe.Id);
             }
 
             return Task.CompletedTask;
@@ -75,6 +85,7 @@ namespace RecipeApp.Services
         public Task<Recipe?> GetRecipeByIdAsync(Guid id)
         {
             var recipe = Recipes.FirstOrDefault(r => r.Id == id);
+            _logger.LogDebug("GetRecipeByIdAsync called for Id {Id}. Found: {Found}", id, recipe != null);
             return Task.FromResult(recipe);
         }
 
@@ -82,27 +93,52 @@ namespace RecipeApp.Services
         {
             var recipe = Recipes.FirstOrDefault(r => r.Id == id);
             if (recipe != null)
+            {
                 Recipes.Remove(recipe);
+                _logger.LogInformation("Recipe deleted: {Title} by {Author}", recipe.Title, recipe.Author);
+            }
+            else
+            {
+                _logger.LogWarning("Delete failed: Recipe with Id {Id} not found", id);
+            }
 
             return Task.CompletedTask;
         }
 
         public bool AddToFavorites(Recipe recipe)
         {
-            if (recipe == null) return false;
+            if (recipe == null)
+            {
+                _logger.LogWarning("AddToFavorites called with null recipe");
+                return false;
+            }
 
             if (Favorites.Any(r => r.Id == recipe.Id))
-                return false; // already a favorite
+            {
+                _logger.LogInformation("Recipe {Title} is already a favorite", recipe.Title);
+                return false;
+            }
 
             Favorites.Add(recipe);
+            _logger.LogInformation("Recipe added to favorites: {Title}", recipe.Title);
             return true;
         }
 
         public bool RemoveFromFavorites(Recipe recipe)
         {
-            if (recipe == null) return false;
+            if (recipe == null)
+            {
+                _logger.LogWarning("RemoveFromFavorites called with null recipe");
+                return false;
+            }
 
-            return Favorites.Remove(recipe);
+            bool removed = Favorites.Remove(recipe);
+            if (removed)
+                _logger.LogInformation("Recipe removed from favorites: {Title}", recipe.Title);
+            else
+                _logger.LogWarning("Attempted to remove recipe {Title} from favorites, but it was not found", recipe.Title);
+
+            return removed;
         }
     }
 }
