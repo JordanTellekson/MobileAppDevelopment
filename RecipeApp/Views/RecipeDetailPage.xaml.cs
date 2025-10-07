@@ -1,4 +1,4 @@
-using RecipeApp.Models;
+using RecipeApp.Shared.Models;
 using RecipeApp.ViewModels;
 using Microsoft.Maui.Controls;
 

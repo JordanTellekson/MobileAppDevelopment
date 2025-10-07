@@ -3,7 +3,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using RecipeApp.Models;
+using RecipeApp.Shared.Models;
 using RecipeApp.Services;
 
 namespace RecipeApp.ViewModels

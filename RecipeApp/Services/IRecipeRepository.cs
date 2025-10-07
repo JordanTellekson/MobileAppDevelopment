@@ -1,4 +1,4 @@
-﻿using RecipeApp.Models;
+﻿using RecipeApp.Shared.Models;
 using System;
 using System.Collections.ObjectModel;
 using System.Threading.Tasks;

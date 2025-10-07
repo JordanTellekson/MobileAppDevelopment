@@ -6,7 +6,7 @@ using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
-using RecipeApp.Models;
+using RecipeApp.Shared.Models;
 using RecipeApp.Services;
 
 namespace RecipeApp.ViewModels

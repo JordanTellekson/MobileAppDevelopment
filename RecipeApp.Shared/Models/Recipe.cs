@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
-namespace RecipeApp.Models
+namespace RecipeApp.Shared.Models
 {
     public class Recipe : INotifyPropertyChanged
     {
