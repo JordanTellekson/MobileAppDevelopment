@@ -70,6 +70,10 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<MauiAsset Include="Data\recipes.json" />
+	</ItemGroup>
+
+	<ItemGroup>
 	  <MauiXaml Update="Resources\Styles\DarkTheme.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>

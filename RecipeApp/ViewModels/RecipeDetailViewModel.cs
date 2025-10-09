@@ -2,6 +2,7 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 using RecipeApp.Shared.Models;
 using RecipeApp.Services;
@@ -26,6 +27,8 @@ namespace RecipeApp.ViewModels
             _navigationService = navigationService;
             _dialogService = dialogService;
             _logger = logger;
+
+            ToggleFavoriteCommand = new AsyncRelayCommand(OnToggleFavoriteAsync);
         }
 
         private Recipe _recipe;
@@ -47,9 +50,11 @@ namespace RecipeApp.ViewModels
             {
                 _recipeId = value;
                 _logger.LogInformation("Recipe ID set for detail view: {RecipeId}", _recipeId);
-                _ = LoadRecipeAsync(); // Fire-and-forget loading
+                _ = LoadRecipeAsync();
             }
         }
+
+        public IAsyncRelayCommand ToggleFavoriteCommand { get; }
 
         private async Task LoadRecipeAsync()
         {
@@ -85,6 +90,44 @@ namespace RecipeApp.ViewModels
                 await _dialogService.ShowAlertAsync("Error", "Invalid Recipe ID", "OK");
                 await _navigationService.GoBackAsync();
             }
+        }
+
+        private async Task OnToggleFavoriteAsync()
+        {
+            if (Recipe == null)
+            {
+                _logger.LogWarning("ToggleFavoriteCommand called with null recipe");
+                return;
+            }
+
+            try
+            {
+                if (Recipe.IsFavorite)
+                {
+                    bool removed = await _repository.RemoveFromFavoritesAsync(Recipe);
+                    if (removed)
+                    {
+                        Recipe.IsFavorite = false;
+                        _logger.LogInformation("Removed recipe from favorites: {Title}", Recipe.Title);
+                    }
+                }
+                else
+                {
+                    bool added = await _repository.AddToFavoritesAsync(Recipe);
+                    if (added)
+                    {
+                        Recipe.IsFavorite = true;
+                        _logger.LogInformation("Added recipe to favorites: {Title}", Recipe.Title);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to toggle favorite status for recipe: {Title}", Recipe.Title);
+                await _dialogService.ShowAlertAsync("Error", "Failed to update favorites", "OK");
+            }
+
+            OnPropertyChanged(nameof(Recipe));
         }
 
         public event PropertyChangedEventHandler PropertyChanged;

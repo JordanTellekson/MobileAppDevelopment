@@ -1,0 +1,24 @@
+[
+  {
+    "Id": "00000000-0000-0000-0000-000000000001",
+    "Title": "Spaghetti Carbonara",
+    "Description": "Classic Italian pasta dish.",
+    "ImageUrl": "spaghetti.jpg",
+    "Ingredients": [ "Pasta", "Eggs", "Pancetta", "Parmesan" ],
+    "Instructions": "Cook pasta, fry pancetta, mix with eggs and cheese.",
+    "CookingTimeMinutes": 30,
+    "Author": "SomeoneElse",
+    "IsFavorite": false
+  },
+  {
+    "Id": "00000000-0000-0000-0000-000000000002",
+    "Title": "Chicken Curry",
+    "Description": "Aromatic and spicy curry.",
+    "ImageUrl": "curry.jpg",
+    "Ingredients": [ "Chicken", "Curry Paste", "Coconut Milk" ],
+    "Instructions": "Cook chicken, add curry paste, stir in coconut milk.",
+    "CookingTimeMinutes": 40,
+    "Author": "OtherUser",
+    "IsFavorite": false
+  }
+]

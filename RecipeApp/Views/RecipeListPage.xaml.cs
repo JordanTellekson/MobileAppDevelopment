@@ -11,13 +11,22 @@ public partial class RecipeListPage : ContentPage
         BindingContext = viewModel;
     }
 
-    private void OnSwipeEnded(object sender, SwipeEndedEventArgs e)
+    private async void OnSwipeEnded(object sender, SwipeEndedEventArgs e)
     {
         if (sender is SwipeView swipeView && swipeView.BindingContext is Recipe recipe)
         {
             if (BindingContext is RecipeListViewModel vm)
             {
-                vm.AddToFavoritesCommand?.Execute(recipe);
+                try
+                {
+                    // Call the async method safely
+                    await vm.AddToFavoritesAsync(recipe);
+                }
+                catch (Exception ex)
+                {
+                    // Optional: log or display error
+                    Console.WriteLine($"Failed to add recipe to favorites: {ex.Message}");
+                }
             }
             swipeView.Close(); // reset swipe visually
         }

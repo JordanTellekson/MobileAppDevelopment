@@ -103,10 +103,9 @@ namespace RecipeApp.ViewModels
             Recipe.ImageUrl = ImageUrl;
             Recipe.CookingTimeMinutes = int.TryParse(CookingTimeMinutes, out var minutes) ? minutes : 0;
             Recipe.Ingredients = Ingredients?.Split(',')
-                                             .Where(i => !string.IsNullOrWhiteSpace(i))
                                              .Select(i => i.Trim())
-                                             .ToList()
-                                 ?? new List<string>();
+                                             .Where(i => !string.IsNullOrWhiteSpace(i))
+                                             .ToList() ?? new List<string>();
             Recipe.Instructions = Instructions;
 
             _logger.LogInformation("Updating recipe: {Title}", Recipe.Title);

@@ -15,7 +15,7 @@ namespace RecipeApp.Services
         Task<Recipe?> GetRecipeByIdAsync(Guid id);
         Task DeleteRecipeAsync(Guid id);
 
-        bool AddToFavorites(Recipe recipe);
-        bool RemoveFromFavorites(Recipe recipe);
+        Task<bool> AddToFavoritesAsync(Recipe recipe);
+        Task<bool> RemoveFromFavoritesAsync(Recipe recipe);
     }
 }

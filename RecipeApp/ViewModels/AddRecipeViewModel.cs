@@ -94,10 +94,9 @@ namespace RecipeApp.ViewModels
             var ingredientList = new List<string>();
             if (!string.IsNullOrWhiteSpace(Ingredients))
             {
-                foreach (var ing in Ingredients.Split(','))
+                foreach (var ing in Ingredients.Split(',', StringSplitOptions.RemoveEmptyEntries))
                 {
-                    if (!string.IsNullOrWhiteSpace(ing))
-                        ingredientList.Add(ing.Trim());
+                    ingredientList.Add(ing.Trim());
                 }
             }
 
@@ -115,8 +114,13 @@ namespace RecipeApp.ViewModels
             try
             {
                 _logger.LogInformation("Adding recipe: {Title} by {Author}", newRecipe.Title, newRecipe.Author);
+
+                // Save to repository (which now persists to JSON)
                 await _repository.AddRecipeAsync(newRecipe);
                 _logger.LogInformation("Recipe added successfully: {Title}", newRecipe.Title);
+
+                // Clear input fields after saving
+                Title = Description = ImageUrl = CookingTimeMinutes = Ingredients = Instructions = string.Empty;
 
                 await _navigationService.GoBackAsync();
                 _logger.LogDebug("Navigation back after adding recipe completed");
