@@ -18,6 +18,18 @@
                    BackgroundColor="{DynamicResource EntryBackgroundColor}"
                    TextColor="{DynamicResource PrimaryTextColor}" />
 
+            <!-- Category -->
+            <Label Text="Category"
+                   TextColor="{DynamicResource PrimaryTextColor}"
+                   FontAttributes="Bold"/>
+            <Picker Title="Select a category"
+                    ItemsSource="{Binding Categories}"
+                    ItemDisplayBinding="{Binding Name}"
+                    SelectedItem="{Binding SelectedCategory}"
+                    BackgroundColor="{DynamicResource EntryBackgroundColor}"
+                    TextColor="{DynamicResource PrimaryTextColor}" />
+
+
             <!-- Description -->
             <Label Text="Description"
                    TextColor="{DynamicResource PrimaryTextColor}"

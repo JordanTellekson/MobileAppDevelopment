@@ -8,16 +8,17 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Maui.Storage;
 
-namespace RecipeApp.Services
+namespace RecipeApp.Repositories
 {
     public class RecipeRepository : IRecipeRepository
     {
         private readonly ILogger<RecipeRepository> _logger;
         private readonly string _localFilePath;
+        private JsonDataStore _dataStore = new(); // Holds Recipes + Categories
 
-        // Keep these collections constant so UI bindings remain valid
         public ObservableCollection<Recipe> Recipes { get; } = new();
         public ObservableCollection<Recipe> Favorites { get; } = new();
+        public ObservableCollection<Category> Categories { get; } = new();
 
         public RecipeRepository(ILogger<RecipeRepository> logger)
         {
@@ -25,45 +26,42 @@ namespace RecipeApp.Services
             _localFilePath = Path.Combine(FileSystem.AppDataDirectory, "recipes.json");
         }
 
-        // Make this public so viewmodels can await it
         public async Task InitializeAsync()
         {
             try
             {
                 _logger.LogInformation("Initializing RecipeRepository...");
 
-                // Check if local file exists
+                // Copy seed JSON if local file doesn't exist
                 if (!File.Exists(_localFilePath))
                 {
                     _logger.LogWarning("Local JSON not found at {Path}. Copying seed data...", _localFilePath);
                     await CopySeedDataAsync();
                 }
-                else
-                {
-                    _logger.LogInformation("Local JSON found at {Path}.", _localFilePath);
-                }
 
-                // Read the JSON file
                 string json = await File.ReadAllTextAsync(_localFilePath);
                 _logger.LogInformation("JSON content length: {Length}", json?.Length ?? 0);
-                _logger.LogDebug("JSON content preview: {JsonPreview}", json?.Substring(0, Math.Min(200, json.Length)));
 
-                // Deserialize
-                var loadedRecipes = JsonSerializer.Deserialize<List<Recipe>>(json);
-                if (loadedRecipes == null)
-                {
-                    _logger.LogWarning("Deserialization returned null. Check JSON format.");
-                    return;
-                }
+                // Deserialize JSON into JsonDataStore
+                _dataStore = JsonSerializer.Deserialize<JsonDataStore>(json) ?? new JsonDataStore();
 
-                // Populate ObservableCollection
+                // Populate categories
+                Categories.Clear();
+                foreach (var c in _dataStore.Categories)
+                    Categories.Add(c);
+
+                // Populate recipes
                 Recipes.Clear();
-                foreach (var r in loadedRecipes)
+                Favorites.Clear();
+                foreach (var r in _dataStore.Recipes)
                 {
                     Recipes.Add(r);
+                    if (r.IsFavorite)
+                        Favorites.Add(r);
                 }
 
-                _logger.LogInformation("Loaded {Count} recipes into Recipes collection.", Recipes.Count);
+                _logger.LogInformation("Loaded {Count} recipes and {CatCount} categories.",
+                    Recipes.Count, Categories.Count);
             }
             catch (Exception ex)
             {
@@ -79,7 +77,6 @@ namespace RecipeApp.Services
                 using var reader = new StreamReader(stream);
                 string seedJson = await reader.ReadToEndAsync();
                 await File.WriteAllTextAsync(_localFilePath, seedJson);
-
                 _logger.LogInformation("Seed data copied to local app directory.");
             }
             catch (Exception ex)
@@ -88,72 +85,44 @@ namespace RecipeApp.Services
             }
         }
 
-        private async Task LoadRecipesAsync()
+        private async Task SaveDataStoreAsync()
         {
             try
             {
-                if (!File.Exists(_localFilePath))
-                {
-                    _logger.LogWarning("No JSON file found at: {Path}", _localFilePath);
-                    return;
-                }
-
-                string json = await File.ReadAllTextAsync(_localFilePath);
-                var loadedRecipes = JsonSerializer.Deserialize<ObservableCollection<Recipe>>(json);
-
-                Recipes.Clear();
-                if (loadedRecipes != null)
-                {
-                    foreach (var r in loadedRecipes)
-                        Recipes.Add(r);
-
-                    _logger.LogInformation("Loaded {Count} recipes from JSON.", Recipes.Count);
-                }
-                else
-                {
-                    _logger.LogWarning("No recipes were loaded (empty JSON).");
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error loading recipes from JSON.");
-            }
-        }
-
-        private async Task SaveRecipesAsync()
-        {
-            try
-            {
-                string json = JsonSerializer.Serialize(Recipes, new JsonSerializerOptions { WriteIndented = true });
+                string json = JsonSerializer.Serialize(_dataStore, new JsonSerializerOptions { WriteIndented = true });
                 await File.WriteAllTextAsync(_localFilePath, json);
-                _logger.LogInformation("Recipes saved successfully.");
+                _logger.LogInformation("Recipes and categories saved successfully.");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to save recipes to JSON.");
+                _logger.LogError(ex, "Failed to save data store to JSON.");
             }
         }
 
         // ---------------------------
-        // CRUD
+        // Recipe CRUD
         // ---------------------------
         public async Task AddRecipeAsync(Recipe recipe)
         {
             if (recipe == null) throw new ArgumentNullException(nameof(recipe));
             if (recipe.Id == Guid.Empty) recipe.Id = Guid.NewGuid();
 
+            _dataStore.Recipes.Add(recipe);
             Recipes.Add(recipe);
-            _logger.LogInformation("Added recipe: {Title} by {Author}", recipe.Title, recipe.Author);
-            await SaveRecipesAsync();
+            if (recipe.IsFavorite) Favorites.Add(recipe);
+
+            _logger.LogInformation("Added recipe: {Title}", recipe.Title);
+            await SaveDataStoreAsync();
         }
 
         public async Task UpdateRecipeAsync(Recipe recipe)
         {
             if (recipe == null) throw new ArgumentNullException(nameof(recipe));
 
-            var existing = Recipes.FirstOrDefault(r => r.Id == recipe.Id);
+            var existing = _dataStore.Recipes.FirstOrDefault(r => r.Id == recipe.Id);
             if (existing != null)
             {
+                // Update the stored recipe
                 existing.Title = recipe.Title;
                 existing.Description = recipe.Description;
                 existing.ImageUrl = recipe.ImageUrl;
@@ -161,9 +130,31 @@ namespace RecipeApp.Services
                 existing.Ingredients = recipe.Ingredients;
                 existing.Instructions = recipe.Instructions;
                 existing.Author = recipe.Author;
+                existing.CategoryId = recipe.CategoryId;
+                existing.CategoryName = recipe.CategoryName;
+                existing.IsFavorite = recipe.IsFavorite;
 
-                _logger.LogInformation("Updated recipe: {Title} by {Author}", recipe.Title, recipe.Author);
-                await SaveRecipesAsync();
+                // Update ObservableCollection
+                var obs = Recipes.First(r => r.Id == recipe.Id);
+                obs.Title = recipe.Title;
+                obs.Description = recipe.Description;
+                obs.ImageUrl = recipe.ImageUrl;
+                obs.CookingTimeMinutes = recipe.CookingTimeMinutes;
+                obs.Ingredients = recipe.Ingredients;
+                obs.Instructions = recipe.Instructions;
+                obs.Author = recipe.Author;
+                obs.CategoryId = recipe.CategoryId;
+                obs.CategoryName = recipe.CategoryName;
+                obs.IsFavorite = recipe.IsFavorite;
+
+                // Update Favorites
+                if (recipe.IsFavorite && !Favorites.Any(r => r.Id == recipe.Id))
+                    Favorites.Add(obs);
+                else if (!recipe.IsFavorite)
+                    Favorites.Remove(obs);
+
+                _logger.LogInformation("Updated recipe: {Title}", recipe.Title);
+                await SaveDataStoreAsync();
             }
             else
             {
@@ -173,19 +164,22 @@ namespace RecipeApp.Services
 
         public Task<Recipe?> GetRecipeByIdAsync(Guid id)
         {
-            var recipe = Recipes.FirstOrDefault(r => r.Id == id);
+            var recipe = _dataStore.Recipes.FirstOrDefault(r => r.Id == id);
             _logger.LogDebug("GetRecipeByIdAsync({Id}) -> Found: {Found}", id, recipe != null);
             return Task.FromResult(recipe);
         }
 
         public async Task DeleteRecipeAsync(Guid id)
         {
-            var recipe = Recipes.FirstOrDefault(r => r.Id == id);
+            var recipe = _dataStore.Recipes.FirstOrDefault(r => r.Id == id);
             if (recipe != null)
             {
+                _dataStore.Recipes.Remove(recipe);
                 Recipes.Remove(recipe);
+                Favorites.Remove(recipe);
+
                 _logger.LogInformation("Deleted recipe: {Title}", recipe.Title);
-                await SaveRecipesAsync();
+                await SaveDataStoreAsync();
             }
             else
             {
@@ -213,7 +207,7 @@ namespace RecipeApp.Services
             Favorites.Add(recipe);
             recipe.IsFavorite = true;
             _logger.LogInformation("Added recipe to favorites: {Title}", recipe.Title);
-            await SaveRecipesAsync();
+            await SaveDataStoreAsync();
             return true;
         }
 
@@ -231,7 +225,7 @@ namespace RecipeApp.Services
             if (removed)
             {
                 _logger.LogInformation("Removed recipe from favorites: {Title}", recipe.Title);
-                await SaveRecipesAsync();
+                await SaveDataStoreAsync();
             }
             else
             {

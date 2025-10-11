@@ -5,15 +5,24 @@ using System.Threading.Tasks;
 
 namespace RecipeApp.Services
 {
-    public interface IRecipeRepository
+    public interface IRecipeService
     {
         ObservableCollection<Recipe> Recipes { get; }
         ObservableCollection<Recipe> Favorites { get; }
+        ObservableCollection<Category> Categories { get; }
+
+        Task InitializeAsync();
 
         Task AddRecipeAsync(Recipe recipe);
         Task UpdateRecipeAsync(Recipe recipe);
-        Task<Recipe?> GetRecipeByIdAsync(Guid id);
         Task DeleteRecipeAsync(Guid id);
+
+        Task AddCategoryAsync(Category category);
+        Task UpdateCategoryAsync(Category category);
+        Task DeleteCategoryAsync(Guid id);
+
+        Task<Recipe?> GetRecipeByIdAsync(Guid id);
+        Task<Category?> GetCategoryByIdAsync(Guid id);
 
         Task<bool> AddToFavoritesAsync(Recipe recipe);
         Task<bool> RemoveFromFavoritesAsync(Recipe recipe);

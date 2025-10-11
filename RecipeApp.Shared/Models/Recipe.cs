@@ -16,6 +16,8 @@ namespace RecipeApp.Shared.Models
         private int _cookingTimeMinutes;
         private string _author;
         private bool _isFavorite;
+        private Guid? _categoryId;
+        private string _categoryName;
 
         public string Title
         {
@@ -63,6 +65,18 @@ namespace RecipeApp.Shared.Models
         {
             get => _isFavorite;
             set => SetProperty(ref _isFavorite, value);
+        }
+
+        public Guid? CategoryId
+        {
+            get => _categoryId;
+            set => SetProperty(ref _categoryId, value);
+        }
+
+        public string CategoryName
+        {
+            get => _categoryName;
+            set => SetProperty(ref _categoryName, value);
         }
 
         public event PropertyChangedEventHandler PropertyChanged;

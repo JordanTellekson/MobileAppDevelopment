@@ -5,26 +5,37 @@ namespace RecipeApp.Views;
 
 public partial class RecipeListPage : ContentPage
 {
+    private RecipeListViewModel ViewModel => BindingContext as RecipeListViewModel;
+
     public RecipeListPage(RecipeListViewModel viewModel)
     {
         InitializeComponent();
         BindingContext = viewModel;
     }
 
+    protected override async void OnAppearing()
+    {
+        base.OnAppearing();
+
+        if (ViewModel != null)
+        {
+            // Ensure recipes are loaded from JSON
+            await ViewModel.InitializeAsync();
+        }
+    }
+
     private async void OnSwipeEnded(object sender, SwipeEndedEventArgs e)
     {
         if (sender is SwipeView swipeView && swipeView.BindingContext is Recipe recipe)
         {
-            if (BindingContext is RecipeListViewModel vm)
+            if (ViewModel != null)
             {
                 try
                 {
-                    // Call the async method safely
-                    await vm.AddToFavoritesAsync(recipe);
+                    await ViewModel.AddToFavoritesAsync(recipe);
                 }
                 catch (Exception ex)
                 {
-                    // Optional: log or display error
                     Console.WriteLine($"Failed to add recipe to favorites: {ex.Message}");
                 }
             }

@@ -16,13 +16,13 @@ namespace RecipeApp.ViewModels
 {
     public class RecipeListViewModel : INotifyPropertyChanged
     {
-        private readonly IRecipeRepository _repository;
+        private readonly IRecipeService _recipeService;
         private readonly IDialogService _dialogService;
         private readonly INavigationService _navigationService;
         private readonly IUserService _userService;
         private readonly ILogger<RecipeListViewModel> _logger;
 
-        public ObservableCollection<Recipe> Recipes { get; } = new();
+        public ObservableCollection<Recipe> Recipes { get; }
 
         public IAsyncRelayCommand<Recipe> RecipeTappedCommand { get; }
         public IAsyncRelayCommand AddRecipeCommand { get; }
@@ -43,18 +43,25 @@ namespace RecipeApp.ViewModels
             set { _isLoading = value; OnPropertyChanged(); }
         }
 
+        private bool _initialized = false;
+
         public RecipeListViewModel(
-            IRecipeRepository repository,
+            IRecipeService recipeService,
             IDialogService dialogService,
             INavigationService navigationService,
             IUserService userService,
             ILogger<RecipeListViewModel> logger)
         {
-            _repository = repository;
+            _recipeService = recipeService;
             _dialogService = dialogService;
             _navigationService = navigationService;
             _userService = userService;
             _logger = logger;
+
+            Recipes = _recipeService.Recipes;
+
+            // Subscribe to collection changes
+            Recipes.CollectionChanged += Recipes_CollectionChanged;
 
             RecipeTappedCommand = new AsyncRelayCommand<Recipe>(OnRecipeTappedAsync);
             AddRecipeCommand = new AsyncRelayCommand(OnAddRecipeAsync);
@@ -62,100 +69,33 @@ namespace RecipeApp.ViewModels
             ToggleFavoriteCommand = new AsyncRelayCommand<Recipe>(OnToggleFavoriteAsync);
             NavigateToFavoritesCommand = new RelayCommand(OnNavigateToFavorites);
             ToggleThemeCommand = new RelayCommand(ToggleTheme);
-
-            if (_repository is RecipeRepository repo)
-            {
-                // Subscribe to individual collection changes
-                repo.Recipes.CollectionChanged += RepositoryRecipesChanged;
-            }
-
-            _ = LoadRecipesAsync();
         }
 
-        private void RepositoryRecipesChanged(object? sender, NotifyCollectionChangedEventArgs e)
+        private void Recipes_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
         {
-            if (e == null) return;
-
-            switch (e.Action)
-            {
-                case NotifyCollectionChangedAction.Add:
-                    foreach (Recipe r in e.NewItems!)
-                    {
-                        if (!Recipes.Any(x => x.Id == r.Id))
-                            Recipes.Add(r);
-                    }
-                    break;
-
-                case NotifyCollectionChangedAction.Remove:
-                    foreach (Recipe r in e.OldItems!)
-                    {
-                        var existing = Recipes.FirstOrDefault(x => x.Id == r.Id);
-                        if (existing != null)
-                            Recipes.Remove(existing);
-                    }
-                    break;
-
-                case NotifyCollectionChangedAction.Replace:
-                    foreach (Recipe r in e.NewItems!)
-                    {
-                        var existing = Recipes.FirstOrDefault(x => x.Id == r.Id);
-                        if (existing != null)
-                        {
-                            int index = Recipes.IndexOf(existing);
-                            Recipes[index] = r;
-                        }
-                    }
-                    break;
-
-                case NotifyCollectionChangedAction.Reset:
-                    Recipes.Clear();
-                    if (_repository.Recipes != null)
-                    {
-                        foreach (var r in _repository.Recipes)
-                            Recipes.Add(r);
-                    }
-                    break;
-            }
-
+            // Notify UI when the collection changes
             OnPropertyChanged(nameof(Recipes));
         }
 
-        public async Task LoadRecipesAsync()
+        public async Task InitializeAsync()
         {
-            IsLoading = true;
+            if (_initialized) return;
+            _initialized = true;
 
+            IsLoading = true;
             try
             {
-                if (_repository is RecipeRepository repo)
-                    await repo.InitializeAsync();
-
-                // Initial load
-                if (_repository.Recipes != null)
-                {
-                    Recipes.Clear();
-                    foreach (var r in _repository.Recipes)
-                        Recipes.Add(r);
-                }
-
-                _logger.LogInformation("Recipes loaded. Count: {Count}", Recipes.Count);
+                await _recipeService.InitializeAsync();
+                _logger.LogInformation("Recipes initialized. Count: {Count}", Recipes.Count);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to load recipes");
+                _logger.LogError(ex, "Failed to initialize recipes");
             }
             finally
             {
                 IsLoading = false;
             }
-        }
-
-        private async Task OnRecipeTappedAsync(Recipe recipe)
-        {
-            if (recipe == null) return;
-
-            var parameters = new Dictionary<string, object> { { "RecipeId", recipe.Id.ToString() } };
-            try { await _navigationService.NavigateToAsync(nameof(Views.RecipeDetailPage), parameters); }
-            catch (Exception ex) { _logger.LogError(ex, "Navigation failed for recipe: {Title}", recipe.Title); }
         }
 
         public async Task AddToFavoritesAsync(Recipe recipe)
@@ -164,19 +104,27 @@ namespace RecipeApp.ViewModels
 
             try
             {
-                bool added = await _repository.AddToFavoritesAsync(recipe);
+                bool added = await _recipeService.AddToFavoritesAsync(recipe);
                 if (added)
-                    await _dialogService.ShowAlertAsync("Added to Favorites", $"{recipe.Title} was added to your favorites.", "OK");
+                    recipe.IsFavorite = true;
                 else
                     await _dialogService.ShowAlertAsync("Already a Favorite", $"{recipe.Title} is already in your favorites.", "OK");
-
-                // UI already bound to the ObservableCollection
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error adding recipe to favorites: {Title}", recipe.Title);
                 await _dialogService.ShowAlertAsync("Error", $"Failed to add {recipe.Title} to favorites.", "OK");
             }
+
+            OnPropertyChanged(nameof(Recipes));
+        }
+
+        private async Task OnRecipeTappedAsync(Recipe recipe)
+        {
+            if (recipe == null) return;
+            var parameters = new Dictionary<string, object> { { "RecipeId", recipe.Id.ToString() } };
+            try { await _navigationService.NavigateToAsync(nameof(Views.RecipeDetailPage), parameters); }
+            catch (Exception ex) { _logger.LogError(ex, "Navigation failed for recipe: {Title}", recipe.Title); }
         }
 
         private async Task OnAddRecipeAsync()
@@ -188,7 +136,6 @@ namespace RecipeApp.ViewModels
         private async Task OnUpdateRecipeAsync(Recipe recipe)
         {
             if (recipe == null) return;
-
             var parameters = new Dictionary<string, object> { { "Recipe", recipe } };
             try { await _navigationService.NavigateToAsync(nameof(Views.UpdateRecipePage), parameters); }
             catch (Exception ex) { _logger.LogError(ex, "Navigation to UpdateRecipePage failed for {Title}", recipe.Title); }
@@ -202,16 +149,15 @@ namespace RecipeApp.ViewModels
             {
                 if (recipe.IsFavorite)
                 {
-                    bool removed = await _repository.RemoveFromFavoritesAsync(recipe);
+                    bool removed = await _recipeService.RemoveFromFavoritesAsync(recipe);
                     if (removed) recipe.IsFavorite = false;
                 }
                 else
                 {
-                    bool added = await _repository.AddToFavoritesAsync(recipe);
+                    bool added = await _recipeService.AddToFavoritesAsync(recipe);
                     if (added) recipe.IsFavorite = true;
                 }
 
-                // No need to reload all recipes
                 OnPropertyChanged(nameof(Recipes));
             }
             catch (Exception ex)

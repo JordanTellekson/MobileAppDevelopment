@@ -70,7 +70,9 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<MauiAsset Include="Data\recipes.json" />
+		<MauiAsset Include="Data\recipes.json">
+		  <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+		</MauiAsset>
 	</ItemGroup>
 
 	<ItemGroup>

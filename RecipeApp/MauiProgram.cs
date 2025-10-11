@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
+using RecipeApp.Repositories;
 using RecipeApp.Services;
 using RecipeApp.ViewModels;
 using RecipeApp.Views;
@@ -20,22 +21,36 @@ namespace RecipeApp
                 });
 
 #if DEBUG
-    		builder.Logging.AddDebug();
-            builder.Logging.SetMinimumLevel(LogLevel.Debug);
+            builder.Logging.AddDebug();
+            builder.Logging.SetMinimumLevel(LogLevel.Information);
 #endif
 
+            // ---------------------------
+            // Repositories
+            // ---------------------------
             builder.Services.AddSingleton<IRecipeRepository, RecipeRepository>();
-            builder.Services.AddSingleton<IDialogService, DialogService>();
-            builder.Services.AddSingleton<INavigationService, NavigationService>();
-            builder.Services.AddSingleton<IUserService, UserService>();
+            builder.Services.AddSingleton<ICategoryRepository, CategoryRepository>();
 
+            // ---------------------------
+            // Services
+            // ---------------------------
+            builder.Services.AddSingleton<IRecipeService, RecipeService>();
+            builder.Services.AddTransient<IDialogService, DialogService>();
+            builder.Services.AddTransient<INavigationService, NavigationService>();
+            builder.Services.AddTransient<IUserService, UserService>();
 
+            // ---------------------------
+            // ViewModels
+            // ---------------------------
             builder.Services.AddTransient<RecipeListViewModel>();
             builder.Services.AddTransient<AddRecipeViewModel>();
             builder.Services.AddTransient<RecipeDetailViewModel>();
             builder.Services.AddTransient<UpdateRecipeViewModel>();
             builder.Services.AddTransient<FavoriteRecipesViewModel>();
 
+            // ---------------------------
+            // Pages
+            // ---------------------------
             builder.Services.AddTransient<RecipeListPage>();
             builder.Services.AddTransient<AddRecipePage>();
             builder.Services.AddTransient<RecipeDetailPage>();

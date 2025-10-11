@@ -8,6 +8,7 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 using RecipeApp.Shared.Models;
 using RecipeApp.Services;
+using RecipeApp.Repositories;
 
 namespace RecipeApp.ViewModels
 {
