@@ -137,7 +137,7 @@ namespace RecipeApp.ViewModels
             }
 
             var filtered = Categories
-                .Where(c => c.Name.StartsWith(CategoryText, StringComparison.OrdinalIgnoreCase))
+                .Where(c => c.Name.Contains(CategoryText, StringComparison.OrdinalIgnoreCase))
                 .ToList();
 
             foreach (var c in filtered)

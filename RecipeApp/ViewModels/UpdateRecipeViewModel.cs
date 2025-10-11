@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -15,27 +16,44 @@ namespace RecipeApp.ViewModels
     [QueryProperty(nameof(Recipe), "Recipe")]
     public class UpdateRecipeViewModel : INotifyPropertyChanged
     {
-        private readonly IRecipeRepository _repository;
+        private readonly IRecipeService _recipeService;
         private readonly IDialogService _dialogService;
         private readonly INavigationService _navigationService;
         private readonly IUserService _userService;
         private readonly ILogger<UpdateRecipeViewModel> _logger;
 
         public UpdateRecipeViewModel(
-            IRecipeRepository repository,
+            IRecipeService recipeService,
             IDialogService dialogService,
             INavigationService navigationService,
             IUserService userService,
             ILogger<UpdateRecipeViewModel> logger)
         {
-            _repository = repository;
+            _recipeService = recipeService;
             _dialogService = dialogService;
             _navigationService = navigationService;
             _userService = userService;
             _logger = logger;
 
-            SaveCommand = new AsyncRelayCommand(OnSaveAsync);
+            Categories = new ObservableCollection<Category>();
+            FilteredCategories = new ObservableCollection<Category>();
+
+            SaveRecipeCommand = new AsyncRelayCommand(OnSaveAsync);
             CancelCommand = new AsyncRelayCommand(OnCancelAsync);
+            SelectCategoryCommand = new RelayCommand<Category>(OnSelectCategory);
+        }
+
+        public async Task InitializeAsync()
+        {
+            _logger.LogInformation("Initializing UpdateRecipeViewModel...");
+
+            await _recipeService.InitializeAsync();
+
+            Categories.Clear();
+            foreach (var c in _recipeService.Categories)
+                Categories.Add(c);
+
+            _logger.LogInformation("Loaded {Count} categories for UpdateRecipePage.", Categories.Count);
         }
 
         private Recipe _recipe;
@@ -57,10 +75,17 @@ namespace RecipeApp.ViewModels
                     CookingTimeMinutes = _recipe.CookingTimeMinutes.ToString();
                     Ingredients = string.Join(", ", _recipe.Ingredients ?? new List<string>());
                     Instructions = _recipe.Instructions;
+
+                    // Set initial category text
+                    if (!string.IsNullOrWhiteSpace(_recipe.CategoryName))
+                        CategoryText = _recipe.CategoryName;
                 }
             }
         }
 
+        // ---------------------------
+        // Recipe fields
+        // ---------------------------
         private string _title;
         public string Title { get => _title; set { _title = value; OnPropertyChanged(); } }
 
@@ -79,8 +104,77 @@ namespace RecipeApp.ViewModels
         private string _instructions;
         public string Instructions { get => _instructions; set { _instructions = value; OnPropertyChanged(); } }
 
-        public IAsyncRelayCommand SaveCommand { get; }
+        // ---------------------------
+        // Categories for autocomplete
+        // ---------------------------
+        public ObservableCollection<Category> Categories { get; }
+        public ObservableCollection<Category> FilteredCategories { get; }
+
+        private string _categoryText;
+        public string CategoryText
+        {
+            get => _categoryText;
+            set
+            {
+                _categoryText = value;
+                OnPropertyChanged();
+                UpdateFilteredCategories();
+            }
+        }
+
+        private bool _isCategorySuggestionsVisible;
+        public bool IsCategorySuggestionsVisible
+        {
+            get => _isCategorySuggestionsVisible;
+            set { _isCategorySuggestionsVisible = value; OnPropertyChanged(); }
+        }
+
+        private Category _selectedCategory;
+        public Category SelectedCategory
+        {
+            get => _selectedCategory;
+            set
+            {
+                _selectedCategory = value;
+                OnPropertyChanged();
+                if (value != null)
+                    CategoryText = value.Name;
+            }
+        }
+
+        // ---------------------------
+        // Commands
+        // ---------------------------
+        public IAsyncRelayCommand SaveRecipeCommand { get; }
         public IAsyncRelayCommand CancelCommand { get; }
+        public RelayCommand<Category> SelectCategoryCommand { get; }
+
+        private void OnSelectCategory(Category category)
+        {
+            if (category == null) return;
+            SelectedCategory = category;
+            IsCategorySuggestionsVisible = false;
+        }
+
+        private void UpdateFilteredCategories()
+        {
+            FilteredCategories.Clear();
+
+            if (string.IsNullOrWhiteSpace(CategoryText))
+            {
+                IsCategorySuggestionsVisible = false;
+                return;
+            }
+
+            var filtered = Categories
+                .Where(c => c.Name.Contains(CategoryText, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            foreach (var c in filtered)
+                FilteredCategories.Add(c);
+
+            IsCategorySuggestionsVisible = filtered.Any();
+        }
 
         private async Task OnSaveAsync()
         {
@@ -98,7 +192,6 @@ namespace RecipeApp.ViewModels
                 return;
             }
 
-            // Update recipe properties
             Recipe.Title = Title;
             Recipe.Description = Description;
             Recipe.ImageUrl = ImageUrl;
@@ -109,11 +202,15 @@ namespace RecipeApp.ViewModels
                                              .ToList() ?? new List<string>();
             Recipe.Instructions = Instructions;
 
+            // Set selected category
+            Recipe.CategoryId = SelectedCategory?.Id ?? Guid.Empty;
+            Recipe.CategoryName = SelectedCategory?.Name ?? CategoryText;
+
             _logger.LogInformation("Updating recipe: {Title}", Recipe.Title);
 
             try
             {
-                await _repository.UpdateRecipeAsync(Recipe);
+                await _recipeService.UpdateRecipeAsync(Recipe);
                 _logger.LogDebug("Recipe updated successfully: {Title}", Recipe.Title);
 
                 await _navigationService.GoBackAsync();

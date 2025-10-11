@@ -25,9 +25,18 @@ public partial class UpdateRecipePage : ContentPage
             _recipe = value;
             if (_recipe != null)
             {
-                // Pass the recipe to the injected ViewModel
                 _viewModel.Recipe = _recipe;
             }
+        }
+    }
+
+    protected override async void OnAppearing()
+    {
+        base.OnAppearing();
+
+        if (_viewModel != null)
+        {
+            await _viewModel.InitializeAsync();
         }
     }
 }

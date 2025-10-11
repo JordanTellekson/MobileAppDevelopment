@@ -28,18 +28,19 @@
                    BackgroundColor="{DynamicResource EntryBackgroundColor}"
                    TextColor="{DynamicResource PrimaryTextColor}"/>
             <CollectionView ItemsSource="{Binding FilteredCategories}"
-                            IsVisible="{Binding IsCategorySuggestionsVisible}"
-                            BackgroundColor="{DynamicResource EntryBackgroundColor}"
-                            SelectionMode="Single"
-                            HeightRequest="120">
+                IsVisible="{Binding IsCategorySuggestionsVisible}"
+                BackgroundColor="{DynamicResource EntryBackgroundColor}"
+                SelectionMode="Single"
+                HeightRequest="120">
                 <CollectionView.ItemTemplate>
                     <DataTemplate>
                         <Label Text="{Binding Name}" 
-                               Padding="5"
-                               TextColor="{DynamicResource PrimaryTextColor}">
+                   Padding="5"
+                   TextColor="{DynamicResource PrimaryTextColor}">
                             <Label.GestureRecognizers>
-                                <TapGestureRecognizer Command="{Binding SelectCategoryCommand}" 
-                                          CommandParameter="{Binding .}" />
+                                <TapGestureRecognizer
+                        Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.SelectCategoryCommand}" 
+                        CommandParameter="{Binding .}" />
                             </Label.GestureRecognizers>
                         </Label>
                     </DataTemplate>
