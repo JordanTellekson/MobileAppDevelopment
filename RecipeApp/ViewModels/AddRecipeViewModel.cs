@@ -34,17 +34,17 @@ namespace RecipeApp.ViewModels
             _logger = logger;
 
             Categories = new ObservableCollection<Category>();
+            FilteredCategories = new ObservableCollection<Category>();
             SaveRecipeCommand = new AsyncRelayCommand(OnSaveRecipeAsync);
+            SelectCategoryCommand = new RelayCommand<Category>(OnSelectCategory);
         }
 
         public async Task InitializeAsync()
         {
             _logger.LogInformation("Initializing AddRecipeViewModel...");
 
-            // Ensure service is initialized
             await _recipeService.InitializeAsync();
 
-            // Populate categories for Picker
             Categories.Clear();
             foreach (var c in _recipeService.Categories)
             {
@@ -76,17 +76,75 @@ namespace RecipeApp.ViewModels
         public string Instructions { get => _instructions; set { _instructions = value; OnPropertyChanged(); } }
 
         // ---------------------------
-        // Categories for Picker
+        // Categories for autocomplete
         // ---------------------------
         public ObservableCollection<Category> Categories { get; }
+        public ObservableCollection<Category> FilteredCategories { get; }
+
+        private string _categoryText;
+        public string CategoryText
+        {
+            get => _categoryText;
+            set
+            {
+                _categoryText = value;
+                OnPropertyChanged();
+                UpdateFilteredCategories();
+            }
+        }
+
+        private bool _isCategorySuggestionsVisible;
+        public bool IsCategorySuggestionsVisible
+        {
+            get => _isCategorySuggestionsVisible;
+            set { _isCategorySuggestionsVisible = value; OnPropertyChanged(); }
+        }
 
         private Category _selectedCategory;
-        public Category SelectedCategory { get => _selectedCategory; set { _selectedCategory = value; OnPropertyChanged(); } }
+        public Category SelectedCategory
+        {
+            get => _selectedCategory;
+            set
+            {
+                _selectedCategory = value;
+                OnPropertyChanged();
+                if (value != null)
+                    CategoryText = value.Name;
+            }
+        }
 
         // ---------------------------
         // Commands
         // ---------------------------
         public IAsyncRelayCommand SaveRecipeCommand { get; }
+        public RelayCommand<Category> SelectCategoryCommand { get; }
+
+        private void OnSelectCategory(Category category)
+        {
+            if (category == null) return;
+            SelectedCategory = category;
+            IsCategorySuggestionsVisible = false;
+        }
+
+        private void UpdateFilteredCategories()
+        {
+            FilteredCategories.Clear();
+
+            if (string.IsNullOrWhiteSpace(CategoryText))
+            {
+                IsCategorySuggestionsVisible = false;
+                return;
+            }
+
+            var filtered = Categories
+                .Where(c => c.Name.StartsWith(CategoryText, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            foreach (var c in filtered)
+                FilteredCategories.Add(c);
+
+            IsCategorySuggestionsVisible = filtered.Any();
+        }
 
         private async Task OnSaveRecipeAsync()
         {
@@ -120,7 +178,7 @@ namespace RecipeApp.ViewModels
                 Instructions = Instructions,
                 Author = _userService.CurrentUser,
                 CategoryId = SelectedCategory?.Id ?? Guid.Empty,
-                CategoryName = SelectedCategory?.Name
+                CategoryName = SelectedCategory?.Name ?? CategoryText
             };
 
             try
@@ -130,8 +188,9 @@ namespace RecipeApp.ViewModels
                 _logger.LogInformation("Recipe added successfully: {Title}", newRecipe.Title);
 
                 // Clear input fields
-                Title = Description = ImageUrl = CookingTimeMinutes = Ingredients = Instructions = string.Empty;
+                Title = Description = ImageUrl = CookingTimeMinutes = Ingredients = Instructions = CategoryText = string.Empty;
                 SelectedCategory = null;
+                IsCategorySuggestionsVisible = false;
 
                 await _navigationService.GoBackAsync();
                 _logger.LogDebug("Navigation back after adding recipe completed");

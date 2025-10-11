@@ -22,13 +22,29 @@
             <Label Text="Category"
                    TextColor="{DynamicResource PrimaryTextColor}"
                    FontAttributes="Bold"/>
-            <Picker Title="Select a category"
-                    ItemsSource="{Binding Categories}"
-                    ItemDisplayBinding="{Binding Name}"
-                    SelectedItem="{Binding SelectedCategory}"
-                    BackgroundColor="{DynamicResource EntryBackgroundColor}"
-                    TextColor="{DynamicResource PrimaryTextColor}" />
-
+            <Entry Placeholder="Type a category"
+                   PlaceholderColor="{DynamicResource PlaceholderTextColor}"
+                   Text="{Binding CategoryText, Mode=TwoWay}"
+                   BackgroundColor="{DynamicResource EntryBackgroundColor}"
+                   TextColor="{DynamicResource PrimaryTextColor}"/>
+            <CollectionView ItemsSource="{Binding FilteredCategories}"
+                            IsVisible="{Binding IsCategorySuggestionsVisible}"
+                            BackgroundColor="{DynamicResource EntryBackgroundColor}"
+                            SelectionMode="Single"
+                            HeightRequest="120">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Label Text="{Binding Name}" 
+                               Padding="5"
+                               TextColor="{DynamicResource PrimaryTextColor}">
+                            <Label.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding SelectCategoryCommand}" 
+                                          CommandParameter="{Binding .}" />
+                            </Label.GestureRecognizers>
+                        </Label>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
 
             <!-- Description -->
             <Label Text="Description"

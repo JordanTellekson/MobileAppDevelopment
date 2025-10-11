@@ -25,6 +25,13 @@
                            FontAttributes="Bold"
                            TextColor="{DynamicResource PrimaryTextColor}" />
 
+                    <!-- Category -->
+                    <Label Text="{Binding CategoryDisplay}"
+                           FontSize="16"
+                           FontAttributes="Italic"
+                           TextColor="{DynamicResource AccentColor}"
+                           Margin="0,0,0,5" />
+
                     <!-- Description -->
                     <Label Text="{Binding Recipe.Description}" 
                            FontSize="16"

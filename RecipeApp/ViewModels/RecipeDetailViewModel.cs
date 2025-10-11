@@ -40,6 +40,7 @@ namespace RecipeApp.ViewModels
             {
                 _recipe = value;
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(CategoryDisplay)); // update when recipe changes
             }
         }
 
@@ -56,6 +57,10 @@ namespace RecipeApp.ViewModels
         }
 
         public IAsyncRelayCommand ToggleFavoriteCommand { get; }
+
+        public string CategoryDisplay => string.IsNullOrWhiteSpace(Recipe?.CategoryName)
+            ? "Uncategorized"
+            : $"Category: {Recipe.CategoryName}";
 
         private async Task LoadRecipeAsync()
         {
