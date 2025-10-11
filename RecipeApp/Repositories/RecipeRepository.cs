@@ -1,4 +1,5 @@
 ﻿using RecipeApp.Shared.Models;
+using RecipeApp.Shared.Services;
 using System;
 using System.Collections.ObjectModel;
 using System.IO;
@@ -32,7 +33,6 @@ namespace RecipeApp.Repositories
             {
                 _logger.LogInformation("Initializing RecipeRepository...");
 
-                // Copy seed JSON if local file doesn't exist
                 if (!File.Exists(_localFilePath))
                 {
                     _logger.LogWarning("Local JSON not found at {Path}. Copying seed data...", _localFilePath);
@@ -40,9 +40,6 @@ namespace RecipeApp.Repositories
                 }
 
                 string json = await File.ReadAllTextAsync(_localFilePath);
-                _logger.LogInformation("JSON content length: {Length}", json?.Length ?? 0);
-
-                // Deserialize JSON into JsonDataStore
                 _dataStore = JsonSerializer.Deserialize<JsonDataStore>(json) ?? new JsonDataStore();
 
                 // Populate categories
@@ -50,18 +47,23 @@ namespace RecipeApp.Repositories
                 foreach (var c in _dataStore.Categories)
                     Categories.Add(c);
 
-                // Populate recipes
+                // Populate recipes and link categories
                 Recipes.Clear();
                 Favorites.Clear();
                 foreach (var r in _dataStore.Recipes)
                 {
+                    // Link category object
+                    if (r.CategoryId.HasValue)
+                    {
+                        r.Category = Categories.FirstOrDefault(c => c.Id == r.CategoryId.Value);
+                    }
+
                     Recipes.Add(r);
                     if (r.IsFavorite)
                         Favorites.Add(r);
                 }
 
-                _logger.LogInformation("Loaded {Count} recipes and {CatCount} categories.",
-                    Recipes.Count, Categories.Count);
+                _logger.LogInformation("Loaded {Count} recipes and {CatCount} categories.", Recipes.Count, Categories.Count);
             }
             catch (Exception ex)
             {
@@ -89,6 +91,12 @@ namespace RecipeApp.Repositories
         {
             try
             {
+                // Ensure CategoryId is updated from Category reference
+                foreach (var r in _dataStore.Recipes)
+                {
+                    r.CategoryId = r.Category?.Id;
+                }
+
                 string json = JsonSerializer.Serialize(_dataStore, new JsonSerializerOptions { WriteIndented = true });
                 await File.WriteAllTextAsync(_localFilePath, json);
                 _logger.LogInformation("Recipes and categories saved successfully.");
@@ -122,7 +130,7 @@ namespace RecipeApp.Repositories
             var existing = _dataStore.Recipes.FirstOrDefault(r => r.Id == recipe.Id);
             if (existing != null)
             {
-                // Update the stored recipe
+                // Update stored recipe
                 existing.Title = recipe.Title;
                 existing.Description = recipe.Description;
                 existing.ImageUrl = recipe.ImageUrl;
@@ -130,11 +138,11 @@ namespace RecipeApp.Repositories
                 existing.Ingredients = recipe.Ingredients;
                 existing.Instructions = recipe.Instructions;
                 existing.Author = recipe.Author;
-                existing.CategoryId = recipe.CategoryId;
-                existing.CategoryName = recipe.CategoryName;
                 existing.IsFavorite = recipe.IsFavorite;
+                existing.Category = recipe.Category;
+                existing.CategoryId = recipe.Category?.Id;
 
-                // Update ObservableCollection
+                // Update observable collection
                 var obs = Recipes.First(r => r.Id == recipe.Id);
                 obs.Title = recipe.Title;
                 obs.Description = recipe.Description;
@@ -143,11 +151,10 @@ namespace RecipeApp.Repositories
                 obs.Ingredients = recipe.Ingredients;
                 obs.Instructions = recipe.Instructions;
                 obs.Author = recipe.Author;
-                obs.CategoryId = recipe.CategoryId;
-                obs.CategoryName = recipe.CategoryName;
                 obs.IsFavorite = recipe.IsFavorite;
+                obs.Category = recipe.Category;
+                obs.CategoryId = recipe.Category?.Id;
 
-                // Update Favorites
                 if (recipe.IsFavorite && !Favorites.Any(r => r.Id == recipe.Id))
                     Favorites.Add(obs);
                 else if (!recipe.IsFavorite)

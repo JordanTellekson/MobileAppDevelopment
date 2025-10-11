@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Logging;
 using RecipeApp.Repositories;
 using RecipeApp.Services;
+using RecipeApp.Shared.Services;
 using RecipeApp.ViewModels;
 using RecipeApp.Views;
 using static RecipeApp.Services.IUserService;

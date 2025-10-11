@@ -1,4 +1,4 @@
-﻿using RecipeApp.Services;
+﻿using RecipeApp.Shared.Services;
 
 namespace RecipeApp
 {

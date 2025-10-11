@@ -1,0 +1,85 @@
+﻿using Microsoft.AspNetCore.Mvc;
+using RecipeApp.Api.Services;
+using RecipeApp.Shared.Models;
+using RecipeApp.Shared.Services;
+
+namespace RecipeApp.Api.Controllers
+{
+    [ApiController]
+    [Route("api/[controller]")]
+    public class CategoriesController : ControllerBase
+    {
+        private readonly IRecipeService _recipeService;
+
+        public CategoriesController(IRecipeService recipeService)
+        {
+            _recipeService = recipeService;
+        }
+
+        // GET: api/categories
+        [HttpGet]
+        public async Task<ActionResult<IEnumerable<Category>>> GetAll()
+        {
+            // Ensure the service reloads data from the database
+            await _recipeService.InitializeAsync();
+            return Ok(_recipeService.Categories);
+        }
+
+        // GET: api/categories/{id}
+        [HttpGet("{id}")]
+        public async Task<ActionResult<Category>> GetById(Guid id)
+        {
+            var category = await _recipeService.GetCategoryByIdAsync(id);
+            if (category == null) return NotFound();
+            return Ok(category);
+        }
+
+        // POST: api/categories
+        [HttpPost]
+        public async Task<ActionResult<Category>> Create(Category category)
+        {
+            if (category == null || string.IsNullOrWhiteSpace(category.Name))
+                return BadRequest("Category is null or missing a name.");
+
+            await _recipeService.AddCategoryAsync(category);
+
+            // Reload to ensure Categories collection is updated
+            await _recipeService.InitializeAsync();
+
+            return CreatedAtAction(nameof(GetById), new { id = category.Id }, category);
+        }
+
+        // PUT: api/categories/{id}
+        [HttpPut("{id}")]
+        public async Task<ActionResult> Update(Guid id, Category category)
+        {
+            if (id != category.Id)
+                return BadRequest("Id mismatch.");
+
+            var existing = await _recipeService.GetCategoryByIdAsync(id);
+            if (existing == null) return NotFound();
+
+            await _recipeService.UpdateCategoryAsync(category);
+
+            // Reload to keep Categories collection in sync
+            await _recipeService.InitializeAsync();
+
+            return NoContent();
+        }
+
+        // DELETE: api/categories/{id}
+        [HttpDelete("{id}")]
+        public async Task<ActionResult> Delete(Guid id)
+        {
+            var existing = await _recipeService.GetCategoryByIdAsync(id);
+            if (existing == null) return NotFound();
+
+            await _recipeService.DeleteCategoryAsync(id);
+
+            // Reload to keep Categories collection in sync
+            await _recipeService.InitializeAsync();
+
+            return NoContent();
+        }
+    }
+}

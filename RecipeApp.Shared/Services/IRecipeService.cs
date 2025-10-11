@@ -3,7 +3,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 
-namespace RecipeApp.Services
+namespace RecipeApp.Shared.Services
 {
     public interface IRecipeService
     {

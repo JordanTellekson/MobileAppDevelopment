@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging;
 using RecipeApp.Shared.Models;
 using RecipeApp.Services;
 using RecipeApp.Repositories;
+using RecipeApp.Shared.Services;
 
 namespace RecipeApp.ViewModels
 {
@@ -76,9 +77,9 @@ namespace RecipeApp.ViewModels
                     Ingredients = string.Join(", ", _recipe.Ingredients ?? new List<string>());
                     Instructions = _recipe.Instructions;
 
-                    // Set initial category text
-                    if (!string.IsNullOrWhiteSpace(_recipe.CategoryName))
-                        CategoryText = _recipe.CategoryName;
+                    // Set initial category
+                    SelectedCategory = _recipe.Category;
+                    CategoryText = SelectedCategory?.Name ?? string.Empty;
                 }
             }
         }
@@ -202,9 +203,9 @@ namespace RecipeApp.ViewModels
                                              .ToList() ?? new List<string>();
             Recipe.Instructions = Instructions;
 
-            // Set selected category
+            // Set Category object and Id
+            Recipe.Category = SelectedCategory;
             Recipe.CategoryId = SelectedCategory?.Id ?? Guid.Empty;
-            Recipe.CategoryName = SelectedCategory?.Name ?? CategoryText;
 
             _logger.LogInformation("Updating recipe: {Title}", Recipe.Title);
 

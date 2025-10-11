@@ -9,6 +9,7 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 using RecipeApp.Shared.Models;
 using RecipeApp.Services;
+using RecipeApp.Shared.Services;
 
 namespace RecipeApp.ViewModels
 {
@@ -177,8 +178,8 @@ namespace RecipeApp.ViewModels
                 Ingredients = ingredientList,
                 Instructions = Instructions,
                 Author = _userService.CurrentUser,
-                CategoryId = SelectedCategory?.Id ?? Guid.Empty,
-                CategoryName = SelectedCategory?.Name ?? CategoryText
+                Category = SelectedCategory,                  // <- directly set Category
+                CategoryId = SelectedCategory?.Id ?? Guid.Empty  // <- keep CategoryId for foreign key
             };
 
             try

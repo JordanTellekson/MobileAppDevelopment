@@ -1,14 +1,14 @@
 ﻿using RecipeApp.Repositories;
-using RecipeApp.Shared.Services;
 using RecipeApp.Shared.Models;
+using RecipeApp.Shared.Services;
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace RecipeApp.Services
+namespace RecipeApp.Api.Services
 {
-    public class RecipeService : IRecipeService
+    public class ApiRecipeService : IRecipeService
     {
         private readonly IRecipeRepository _recipeRepo;
         private readonly ICategoryRepository _categoryRepo;
@@ -17,7 +17,7 @@ namespace RecipeApp.Services
         public ObservableCollection<Recipe> Favorites => _recipeRepo.Favorites;
         public ObservableCollection<Category> Categories => _categoryRepo.Categories;
 
-        public RecipeService(IRecipeRepository recipeRepo, ICategoryRepository categoryRepo)
+        public ApiRecipeService(IRecipeRepository recipeRepo, ICategoryRepository categoryRepo)
         {
             _recipeRepo = recipeRepo;
             _categoryRepo = categoryRepo;
@@ -26,28 +26,16 @@ namespace RecipeApp.Services
         public async Task InitializeAsync()
         {
             // Initialize repositories first
-            await _recipeRepo.InitializeAsync();
             await _categoryRepo.InitializeAsync();
+            await _recipeRepo.InitializeAsync();
 
-            // Ensure all recipes have Category objects linked
+            // Ensure recipes have proper Category navigation reference
             foreach (var recipe in Recipes)
             {
                 if (recipe.CategoryId.HasValue && recipe.Category == null)
                 {
                     recipe.Category = Categories.FirstOrDefault(c => c.Id == recipe.CategoryId.Value);
                 }
-            }
-
-            // Dynamically populate missing categories from recipes
-            var missingCategories = Recipes
-                .Where(r => r.Category != null && !Categories.Any(c => c.Id == r.Category.Id))
-                .Select(r => r.Category)
-                .Distinct()
-                .ToList();
-
-            foreach (var category in missingCategories)
-            {
-                await AddCategoryAsync(category);
             }
         }
 
@@ -56,24 +44,29 @@ namespace RecipeApp.Services
         // ---------------------------
         public async Task AddRecipeAsync(Recipe recipe)
         {
+            // Ensure recipe has a category reference
             if (recipe.Category != null)
             {
-                // Ensure category exists in Categories repository
-                var existingCategory = Categories.FirstOrDefault(c => c.Id == recipe.Category.Id);
-                if (existingCategory == null)
-                {
-                    await AddCategoryAsync(recipe.Category);
-                }
-                else
-                {
-                    recipe.Category = existingCategory; // Link to existing reference
-                }
+                recipe.CategoryId = recipe.Category.Id;
+
+                // Add category to repo if missing
+                if (!Categories.Any(c => c.Id == recipe.Category.Id))
+                    await _categoryRepo.AddCategoryAsync(recipe.Category);
             }
 
             await _recipeRepo.AddRecipeAsync(recipe);
         }
 
-        public Task UpdateRecipeAsync(Recipe recipe) => _recipeRepo.UpdateRecipeAsync(recipe);
+        public Task UpdateRecipeAsync(Recipe recipe)
+        {
+            if (recipe.Category != null)
+            {
+                recipe.CategoryId = recipe.Category.Id;
+            }
+
+            return _recipeRepo.UpdateRecipeAsync(recipe);
+        }
+
         public Task DeleteRecipeAsync(Guid id) => _recipeRepo.DeleteRecipeAsync(id);
         public Task<Recipe?> GetRecipeByIdAsync(Guid id) => _recipeRepo.GetRecipeByIdAsync(id);
 

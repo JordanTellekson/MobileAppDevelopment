@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Logging;
 using RecipeApp.Shared.Models;
 using RecipeApp.Resources.Styles;
+using RecipeApp.Shared.Services;
 using RecipeApp.Services;
 using System;
 using System.Collections.Generic;
@@ -105,10 +106,17 @@ namespace RecipeApp.ViewModels
             try
             {
                 bool added = await _recipeService.AddToFavoritesAsync(recipe);
+
                 if (added)
+                {
                     recipe.IsFavorite = true;
+                    // Show notification when added successfully
+                    await _dialogService.ShowAlertAsync("Added to Favorites", $"{recipe.Title} was added to your favorites.", "OK");
+                }
                 else
+                {
                     await _dialogService.ShowAlertAsync("Already a Favorite", $"{recipe.Title} is already in your favorites.", "OK");
+                }
             }
             catch (Exception ex)
             {

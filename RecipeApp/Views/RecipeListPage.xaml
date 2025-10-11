@@ -39,7 +39,10 @@
                 <SwipeView SwipeEnded="OnSwipeEnded">
                     <SwipeView.RightItems>
                         <SwipeItems Mode="Reveal">
-                            <SwipeItem Text="Favorite" BackgroundColor="Transparent" IsEnabled="False"/>
+                            <SwipeItem Text="Favorite"
+                                       BackgroundColor="Transparent"
+                                       Command="{Binding BindingContext.ToggleFavoriteCommand, Source={x:Reference RecipeCollection}}"
+                                       CommandParameter="{Binding .}" />
                         </SwipeItems>
                     </SwipeView.RightItems>
 

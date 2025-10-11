@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using System.Runtime.CompilerServices;
 
 namespace RecipeApp.Shared.Models
@@ -8,16 +9,17 @@ namespace RecipeApp.Shared.Models
     public class Recipe : INotifyPropertyChanged
     {
         public Guid Id { get; set; } = Guid.NewGuid();
+
         private string _title;
         private string _description;
         private string _imageUrl;
-        private List<string> _ingredients;
+        private List<string> _ingredients = new();
         private string _instructions;
         private int _cookingTimeMinutes;
         private string _author;
         private bool _isFavorite;
         private Guid? _categoryId;
-        private string _categoryName;
+        private Category? _category; // Navigation property
 
         public string Title
         {
@@ -67,27 +69,36 @@ namespace RecipeApp.Shared.Models
             set => SetProperty(ref _isFavorite, value);
         }
 
+        // Foreign key for Category
         public Guid? CategoryId
         {
             get => _categoryId;
             set => SetProperty(ref _categoryId, value);
         }
 
-        public string CategoryName
+        // Navigation property
+        public Category? Category
         {
-            get => _categoryName;
-            set => SetProperty(ref _categoryName, value);
+            get => _category;
+            set
+            {
+                SetProperty(ref _category, value);
+                // Optionally keep CategoryId in sync
+                if (value != null)
+                    CategoryId = value.Id;
+            }
         }
 
-        public event PropertyChangedEventHandler PropertyChanged;
+        // Convenience property for getting category name
+        public string? CategoryName => Category?.Name;
 
-        // Notify UI that a property has changed
+        public event PropertyChangedEventHandler? PropertyChanged;
+
         protected void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
 
-        // Set the backing field and notify UI if value changed
         protected bool SetProperty<T>(ref T backingStore, T value, [CallerMemberName] string propertyName = "")
         {
             if (EqualityComparer<T>.Default.Equals(backingStore, value))
