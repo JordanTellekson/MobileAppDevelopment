@@ -6,8 +6,9 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
-using RecipeApp.Models;
+using RecipeApp.Shared.Models;
 using RecipeApp.Services;
+using RecipeApp.Repositories;
 
 namespace RecipeApp.ViewModels
 {
@@ -33,13 +34,13 @@ namespace RecipeApp.ViewModels
             Favorites = _repository.Favorites;
 
             RecipeTappedCommand = new AsyncRelayCommand<Recipe>(OnRecipeTappedAsync);
-            RemoveFromFavoritesCommand = new RelayCommand<Recipe>(OnRemoveFromFavorites);
+            RemoveFromFavoritesCommand = new AsyncRelayCommand<Recipe>(OnRemoveFromFavoritesAsync);
         }
 
         public ObservableCollection<Recipe> Favorites { get; }
 
         public IAsyncRelayCommand<Recipe> RecipeTappedCommand { get; }
-        public IRelayCommand<Recipe> RemoveFromFavoritesCommand { get; }
+        public IAsyncRelayCommand<Recipe> RemoveFromFavoritesCommand { get; }
 
         private async Task OnRecipeTappedAsync(Recipe recipe)
         {
@@ -67,7 +68,7 @@ namespace RecipeApp.ViewModels
             }
         }
 
-        private async void OnRemoveFromFavorites(Recipe recipe)
+        private async Task OnRemoveFromFavoritesAsync(Recipe recipe)
         {
             if (recipe == null)
             {
@@ -75,7 +76,8 @@ namespace RecipeApp.ViewModels
                 return;
             }
 
-            if (_repository.RemoveFromFavorites(recipe))
+            bool removed = await _repository.RemoveFromFavoritesAsync(recipe);
+            if (removed)
             {
                 _logger.LogInformation("Removed recipe from favorites: {Title}", recipe.Title);
                 recipe.IsFavorite = false;

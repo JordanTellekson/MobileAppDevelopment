@@ -6,59 +6,113 @@
              BackgroundColor="{DynamicResource PageBackgroundColor}">
 
     <ScrollView>
-        <VerticalStackLayout Padding="15" Spacing="10">
+        <VerticalStackLayout Padding="15" Spacing="15">
 
-            <Entry Placeholder="Title" 
+            <!-- Title -->
+            <Label Text="Recipe Title"
+                   TextColor="{DynamicResource PrimaryTextColor}"
+                   FontAttributes="Bold"/>
+            <Entry Placeholder="Spaghetti Bolognese"
                    PlaceholderColor="{DynamicResource PlaceholderTextColor}"
-                   Text="{Binding Title}" 
-                   BackgroundColor="{DynamicResource EntryBackgroundColor}" 
+                   Text="{Binding Title}"
+                   BackgroundColor="{DynamicResource EntryBackgroundColor}"
                    TextColor="{DynamicResource PrimaryTextColor}" />
 
-            <Editor Placeholder="Description" 
+            <!-- Category -->
+            <Label Text="Category"
+                   TextColor="{DynamicResource PrimaryTextColor}"
+                   FontAttributes="Bold"/>
+            <Entry Placeholder="Type a category"
+                   PlaceholderColor="{DynamicResource PlaceholderTextColor}"
+                   Text="{Binding CategoryText, Mode=TwoWay}"
+                   BackgroundColor="{DynamicResource EntryBackgroundColor}"
+                   TextColor="{DynamicResource PrimaryTextColor}"/>
+            <CollectionView ItemsSource="{Binding FilteredCategories}"
+                IsVisible="{Binding IsCategorySuggestionsVisible}"
+                BackgroundColor="{DynamicResource EntryBackgroundColor}"
+                SelectionMode="Single"
+                HeightRequest="120">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Label Text="{Binding Name}" 
+                   Padding="5"
+                   TextColor="{DynamicResource PrimaryTextColor}">
+                            <Label.GestureRecognizers>
+                                <TapGestureRecognizer
+                        Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.SelectCategoryCommand}" 
+                        CommandParameter="{Binding .}" />
+                            </Label.GestureRecognizers>
+                        </Label>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+            <!-- Description -->
+            <Label Text="Description"
+                   TextColor="{DynamicResource PrimaryTextColor}"
+                   FontAttributes="Bold"/>
+            <Editor Placeholder="A classic Italian pasta dish with rich tomato sauce."
                     PlaceholderColor="{DynamicResource PlaceholderTextColor}"
-                    Text="{Binding Description}" 
+                    Text="{Binding Description}"
                     HeightRequest="60"
-                    BackgroundColor="{DynamicResource EntryBackgroundColor}" 
+                    BackgroundColor="{DynamicResource EntryBackgroundColor}"
                     TextColor="{DynamicResource PrimaryTextColor}" />
 
-            <Entry Placeholder="Image URL" 
+            <!-- Image URL -->
+            <Label Text="Image URL"
+                   TextColor="{DynamicResource PrimaryTextColor}"
+                   FontAttributes="Bold"/>
+            <Entry Placeholder="https://example.com/spaghetti.jpg"
                    PlaceholderColor="{DynamicResource PlaceholderTextColor}"
-                   Text="{Binding ImageUrl}" 
-                   BackgroundColor="{DynamicResource EntryBackgroundColor}" 
+                   Text="{Binding ImageUrl}"
+                   BackgroundColor="{DynamicResource EntryBackgroundColor}"
                    TextColor="{DynamicResource PrimaryTextColor}" />
 
-            <Entry Placeholder="Cooking Time (minutes)" 
+            <!-- Cooking Time -->
+            <Label Text="Cooking Time (minutes)"
+                   TextColor="{DynamicResource PrimaryTextColor}"
+                   FontAttributes="Bold"/>
+            <Entry Placeholder="45"
                    PlaceholderColor="{DynamicResource PlaceholderTextColor}"
-                   Keyboard="Numeric" 
-                   Text="{Binding CookingTimeMinutes}" 
-                   BackgroundColor="{DynamicResource EntryBackgroundColor}" 
+                   Keyboard="Numeric"
+                   Text="{Binding CookingTimeMinutes}"
+                   BackgroundColor="{DynamicResource EntryBackgroundColor}"
                    TextColor="{DynamicResource PrimaryTextColor}" />
 
-            <Editor Placeholder="Ingredients (comma-separated)" 
+            <!-- Ingredients -->
+            <Label Text="Ingredients"
+                   TextColor="{DynamicResource PrimaryTextColor}"
+                   FontAttributes="Bold"/>
+            <Editor Placeholder="Spaghetti, ground beef, tomato sauce, garlic, onion, olive oil"
                     PlaceholderColor="{DynamicResource PlaceholderTextColor}"
-                    Text="{Binding Ingredients}" 
+                    Text="{Binding Ingredients}"
                     HeightRequest="80"
-                    BackgroundColor="{DynamicResource EntryBackgroundColor}" 
+                    BackgroundColor="{DynamicResource EntryBackgroundColor}"
                     TextColor="{DynamicResource PrimaryTextColor}" />
 
-            <Editor Placeholder="Instructions" 
+            <!-- Instructions -->
+            <Label Text="Instructions"
+                   TextColor="{DynamicResource PrimaryTextColor}"
+                   FontAttributes="Bold"/>
+            <Editor Placeholder="Boil pasta. Cook beef with sauce. Combine and serve hot."
                     PlaceholderColor="{DynamicResource PlaceholderTextColor}"
-                    Text="{Binding Instructions}" 
+                    Text="{Binding Instructions}"
                     HeightRequest="120"
-                    BackgroundColor="{DynamicResource EntryBackgroundColor}" 
+                    BackgroundColor="{DynamicResource EntryBackgroundColor}"
                     TextColor="{DynamicResource PrimaryTextColor}" />
 
-            <HorizontalStackLayout Spacing="10">
-                <Button Text="Save" 
-                        Command="{Binding SaveCommand}" 
-                        BackgroundColor="{DynamicResource ButtonBackgroundColor}" 
-                        TextColor="{DynamicResource ButtonTextColor}" 
+            <!-- Action Buttons -->
+            <HorizontalStackLayout Spacing="10" Margin="0,10,0,0">
+                <Button Text="Save"
+                        Command="{Binding SaveRecipeCommand}"
+                        BackgroundColor="{DynamicResource ButtonBackgroundColor}"
+                        TextColor="{DynamicResource ButtonTextColor}"
                         CornerRadius="8" />
 
-                <Button Text="Cancel" 
-                        Command="{Binding CancelCommand}" 
-                        BackgroundColor="{DynamicResource ButtonBackgroundColor}" 
-                        TextColor="{DynamicResource ButtonTextColor}" 
+                <Button Text="Cancel"
+                        Command="{Binding CancelCommand}"
+                        BackgroundColor="{DynamicResource ButtonBackgroundColor}"
+                        TextColor="{DynamicResource ButtonTextColor}"
                         CornerRadius="8" />
             </HorizontalStackLayout>
 
