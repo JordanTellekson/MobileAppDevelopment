@@ -1,0 +1,23 @@
+{
+  "Categories": [
+    {
+      "Id": "00000000-0000-0000-0000-000000000010",
+      "Name": "Italian"
+    }
+  ],
+  "Recipes": [
+    {
+      "Id": "00000000-0000-0000-0000-000000000001",
+      "Title": "Spaghetti Carbonara",
+      "Description": "Classic Italian pasta dish.",
+      "ImageUrl": "spaghetti.jpg",
+      "Ingredients": [ "Pasta", "Eggs", "Pancetta", "Parmesan" ],
+      "Instructions": "Cook pasta, fry pancetta, mix with eggs and cheese.",
+      "CookingTimeMinutes": 30,
+      "Author": "SomeoneElse",
+      "IsFavorite": false,
+      "CategoryId": "00000000-0000-0000-0000-000000000010",
+      "CategoryName": "Italian"
+    }
+  ]
+}

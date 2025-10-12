@@ -30,7 +30,6 @@ namespace RecipeApp
             // Repositories
             // ---------------------------
             builder.Services.AddSingleton<IRecipeRepository, RecipeRepository>();
-            builder.Services.AddSingleton<ICategoryRepository, CategoryRepository>();
 
             // ---------------------------
             // Services

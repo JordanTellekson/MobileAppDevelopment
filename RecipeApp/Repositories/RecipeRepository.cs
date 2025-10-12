@@ -27,11 +27,14 @@ namespace RecipeApp.Repositories
             _localFilePath = Path.Combine(FileSystem.AppDataDirectory, "recipes.json");
         }
 
+        // ---------------------------
+        // Initialization
+        // ---------------------------
         public async Task InitializeAsync()
         {
             try
             {
-                _logger.LogInformation("Initializing RecipeRepository...");
+                _logger.LogInformation("Initializing RecipeRepository (JSON)...");
 
                 if (!File.Exists(_localFilePath))
                 {
@@ -42,21 +45,18 @@ namespace RecipeApp.Repositories
                 string json = await File.ReadAllTextAsync(_localFilePath);
                 _dataStore = JsonSerializer.Deserialize<JsonDataStore>(json) ?? new JsonDataStore();
 
-                // Populate categories
+                // Populate Categories
                 Categories.Clear();
                 foreach (var c in _dataStore.Categories)
                     Categories.Add(c);
 
-                // Populate recipes and link categories
+                // Populate Recipes and link categories
                 Recipes.Clear();
                 Favorites.Clear();
                 foreach (var r in _dataStore.Recipes)
                 {
-                    // Link category object
                     if (r.CategoryId.HasValue)
-                    {
                         r.Category = Categories.FirstOrDefault(c => c.Id == r.CategoryId.Value);
-                    }
 
                     Recipes.Add(r);
                     if (r.IsFavorite)
@@ -67,7 +67,7 @@ namespace RecipeApp.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to initialize recipe repository.");
+                _logger.LogError(ex, "Failed to initialize RecipeRepository.");
             }
         }
 
@@ -91,15 +91,13 @@ namespace RecipeApp.Repositories
         {
             try
             {
-                // Ensure CategoryId is updated from Category reference
+                // Sync category references before saving
                 foreach (var r in _dataStore.Recipes)
-                {
                     r.CategoryId = r.Category?.Id;
-                }
 
                 string json = JsonSerializer.Serialize(_dataStore, new JsonSerializerOptions { WriteIndented = true });
                 await File.WriteAllTextAsync(_localFilePath, json);
-                _logger.LogInformation("Recipes and categories saved successfully.");
+                _logger.LogInformation("Data store (recipes + categories) saved successfully.");
             }
             catch (Exception ex)
             {
@@ -108,7 +106,74 @@ namespace RecipeApp.Repositories
         }
 
         // ---------------------------
-        // Recipe CRUD
+        // CATEGORY CRUD
+        // ---------------------------
+        public async Task AddCategoryAsync(Category category)
+        {
+            if (category == null) throw new ArgumentNullException(nameof(category));
+            if (category.Id == Guid.Empty) category.Id = Guid.NewGuid();
+
+            _dataStore.Categories.Add(category);
+            Categories.Add(category);
+
+            _logger.LogInformation("Added category: {Name}", category.Name);
+            await SaveDataStoreAsync();
+        }
+
+        public async Task UpdateCategoryAsync(Category category)
+        {
+            if (category == null) throw new ArgumentNullException(nameof(category));
+
+            var existing = _dataStore.Categories.FirstOrDefault(c => c.Id == category.Id);
+            if (existing != null)
+            {
+                existing.Name = category.Name;
+
+                var obs = Categories.First(c => c.Id == category.Id);
+                obs.Name = category.Name;
+
+                _logger.LogInformation("Updated category: {Name}", category.Name);
+                await SaveDataStoreAsync();
+            }
+            else
+            {
+                _logger.LogWarning("Update failed: Category with Id {Id} not found", category.Id);
+            }
+        }
+
+        public Task<Category?> GetCategoryByIdAsync(Guid id)
+        {
+            var category = _dataStore.Categories.FirstOrDefault(c => c.Id == id);
+            _logger.LogDebug("GetCategoryByIdAsync({Id}) -> Found: {Found}", id, category != null);
+            return Task.FromResult(category);
+        }
+
+        public async Task DeleteCategoryAsync(Guid id)
+        {
+            var category = _dataStore.Categories.FirstOrDefault(c => c.Id == id);
+            if (category != null)
+            {
+                _dataStore.Categories.Remove(category);
+                Categories.Remove(category);
+
+                // Clear category references in recipes
+                foreach (var recipe in _dataStore.Recipes.Where(r => r.CategoryId == id))
+                {
+                    recipe.Category = null;
+                    recipe.CategoryId = null;
+                }
+
+                _logger.LogInformation("Deleted category: {Name}", category.Name);
+                await SaveDataStoreAsync();
+            }
+            else
+            {
+                _logger.LogWarning("Delete failed: Category with Id {Id} not found", id);
+            }
+        }
+
+        // ---------------------------
+        // RECIPE CRUD
         // ---------------------------
         public async Task AddRecipeAsync(Recipe recipe)
         {
@@ -130,7 +195,6 @@ namespace RecipeApp.Repositories
             var existing = _dataStore.Recipes.FirstOrDefault(r => r.Id == recipe.Id);
             if (existing != null)
             {
-                // Update stored recipe
                 existing.Title = recipe.Title;
                 existing.Description = recipe.Description;
                 existing.ImageUrl = recipe.ImageUrl;
@@ -142,7 +206,6 @@ namespace RecipeApp.Repositories
                 existing.Category = recipe.Category;
                 existing.CategoryId = recipe.Category?.Id;
 
-                // Update observable collection
                 var obs = Recipes.First(r => r.Id == recipe.Id);
                 obs.Title = recipe.Title;
                 obs.Description = recipe.Description;
@@ -195,7 +258,7 @@ namespace RecipeApp.Repositories
         }
 
         // ---------------------------
-        // Favorites
+        // FAVORITES
         // ---------------------------
         public async Task<bool> AddToFavoritesAsync(Recipe recipe)
         {

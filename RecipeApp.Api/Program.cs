@@ -8,16 +8,34 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container
 builder.Services.AddControllers();
 
-// SQL Server (Docker) setup
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+// ---------------------------
+// Repository switch based on appsettings.json
+// ---------------------------
+bool useDatabase = builder.Configuration.GetValue<bool>("Storage:UseDatabase");
 
-// API repositories
-builder.Services.AddScoped<IRecipeRepository, ApiRecipeRepository>();
-builder.Services.AddScoped<ICategoryRepository, ApiCategoryRepository>();
+if (useDatabase)
+{
+    // SQL Server (Docker) setup
+    builder.Services.AddDbContext<AppDbContext>(options =>
+        options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Service layer
-builder.Services.AddScoped<IRecipeService, ApiRecipeService>();
+    // API repository and service
+    builder.Services.AddScoped<IRecipeRepository, ApiRecipeRepository>();
+    builder.Services.AddScoped<IRecipeService, ApiRecipeService>();
+}
+else
+{
+    // JSON repository (local file) needs IWebHostEnvironment
+    builder.Services.AddSingleton<IRecipeRepository, JsonRecipeRepository>(sp =>
+    {
+        var logger = sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<JsonRecipeRepository>>();
+        var env = sp.GetRequiredService<IWebHostEnvironment>();
+        return new JsonRecipeRepository(logger, env);
+    });
+
+    // JSON-style service
+    builder.Services.AddScoped<IRecipeService, RecipeService>();
+}
 
 // Swagger/OpenAPI
 builder.Services.AddEndpointsApiExplorer();
@@ -36,10 +54,14 @@ app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
 
-using (var scope = app.Services.CreateScope())
+// Ensure SQL database is created if using SQL
+if (useDatabase)
 {
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    db.Database.EnsureCreated();
+    using (var scope = app.Services.CreateScope())
+    {
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        db.Database.EnsureCreated();
+    }
 }
 
 app.Run();

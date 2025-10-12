@@ -1,27 +1,35 @@
 ﻿using RecipeApp.Shared.Models;
 using RecipeApp.Shared.Services;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace RecipeApp.Repositories
 {
-    public class ApiRecipeRepository : IRecipeRepository
+    public class JsonRecipeRepository : IRecipeRepository
     {
-        private readonly ILogger<ApiRecipeRepository> _logger;
-        private readonly AppDbContext _dbContext;
+        private readonly ILogger<JsonRecipeRepository> _logger;
+        private readonly string _filePath;
+        private JsonDataStore _dataStore = new(); // Holds both recipes and categories
 
         public ObservableCollection<Recipe> Recipes { get; } = new();
         public ObservableCollection<Recipe> Favorites { get; } = new();
         public ObservableCollection<Category> Categories { get; } = new();
 
-        public ApiRecipeRepository(ILogger<ApiRecipeRepository> logger, AppDbContext dbContext)
+        public JsonRecipeRepository(ILogger<JsonRecipeRepository> logger, IWebHostEnvironment env)
         {
             _logger = logger;
-            _dbContext = dbContext;
+            _filePath = Path.Combine(env.ContentRootPath, "Data", "Recipes.json");
+
+            if (!File.Exists(_filePath))
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(_filePath)!);
+                File.WriteAllText(_filePath, JsonSerializer.Serialize(_dataStore));
+            }
         }
 
         // ---------------------------
@@ -29,27 +37,55 @@ namespace RecipeApp.Repositories
         // ---------------------------
         public async Task InitializeAsync()
         {
-            _logger.LogInformation("Initializing SQL RecipeRepository (combined)...");
+            _logger.LogInformation("Initializing JSON RecipeRepository...");
 
-            // Load categories
-            var categories = await _dbContext.Categories.ToListAsync();
-            Categories.Clear();
-            foreach (var c in categories)
-                Categories.Add(c);
-
-            // Load recipes including categories
-            var recipes = await _dbContext.Recipes.Include(r => r.Category).ToListAsync();
-            Recipes.Clear();
-            Favorites.Clear();
-
-            foreach (var r in recipes)
+            try
             {
-                Recipes.Add(r);
-                if (r.IsFavorite)
-                    Favorites.Add(r);
-            }
+                var json = await File.ReadAllTextAsync(_filePath);
+                _dataStore = JsonSerializer.Deserialize<JsonDataStore>(json) ?? new JsonDataStore();
 
-            _logger.LogInformation("Loaded {Count} recipes and {CatCount} categories from SQL.", Recipes.Count, Categories.Count);
+                // Populate categories
+                Categories.Clear();
+                foreach (var c in _dataStore.Categories)
+                    Categories.Add(c);
+
+                // Populate recipes and link categories
+                Recipes.Clear();
+                Favorites.Clear();
+                foreach (var r in _dataStore.Recipes)
+                {
+                    if (r.CategoryId.HasValue)
+                        r.Category = Categories.FirstOrDefault(c => c.Id == r.CategoryId.Value);
+
+                    Recipes.Add(r);
+                    if (r.IsFavorite)
+                        Favorites.Add(r);
+                }
+
+                _logger.LogInformation("Loaded {Count} recipes and {CatCount} categories.", Recipes.Count, Categories.Count);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error initializing JSON repository");
+            }
+        }
+
+        private async Task SaveAsync()
+        {
+            try
+            {
+                // Sync CategoryId before saving
+                foreach (var r in _dataStore.Recipes)
+                    r.CategoryId = r.Category?.Id;
+
+                string json = JsonSerializer.Serialize(_dataStore, new JsonSerializerOptions { WriteIndented = true });
+                await File.WriteAllTextAsync(_filePath, json);
+                _logger.LogInformation("Saved {Count} recipes and {CatCount} categories to JSON.", Recipes.Count, Categories.Count);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error saving JSON repository");
+            }
         }
 
         // ---------------------------
@@ -60,27 +96,26 @@ namespace RecipeApp.Repositories
             if (category == null) throw new ArgumentNullException(nameof(category));
             if (category.Id == Guid.Empty) category.Id = Guid.NewGuid();
 
-            await _dbContext.Categories.AddAsync(category);
-            await _dbContext.SaveChangesAsync();
-
+            _dataStore.Categories.Add(category);
             Categories.Add(category);
+
             _logger.LogInformation("Added category: {Name}", category.Name);
+            await SaveAsync();
         }
 
         public async Task UpdateCategoryAsync(Category category)
         {
             if (category == null) throw new ArgumentNullException(nameof(category));
 
-            var existing = await _dbContext.Categories.FindAsync(category.Id);
+            var existing = _dataStore.Categories.FirstOrDefault(c => c.Id == category.Id);
             if (existing != null)
             {
-                _dbContext.Entry(existing).CurrentValues.SetValues(category);
-                await _dbContext.SaveChangesAsync();
-
+                existing.Name = category.Name;
                 var obs = Categories.First(c => c.Id == category.Id);
                 obs.Name = category.Name;
 
                 _logger.LogInformation("Updated category: {Name}", category.Name);
+                await SaveAsync();
             }
             else
             {
@@ -88,31 +123,30 @@ namespace RecipeApp.Repositories
             }
         }
 
-        public async Task<Category?> GetCategoryByIdAsync(Guid id)
+        public Task<Category?> GetCategoryByIdAsync(Guid id)
         {
-            var category = await _dbContext.Categories.FindAsync(id);
+            var category = _dataStore.Categories.FirstOrDefault(c => c.Id == id);
             _logger.LogDebug("GetCategoryByIdAsync({Id}) -> Found: {Found}", id, category != null);
-            return category;
+            return Task.FromResult(category);
         }
 
         public async Task DeleteCategoryAsync(Guid id)
         {
-            var category = await _dbContext.Categories.FindAsync(id);
+            var category = _dataStore.Categories.FirstOrDefault(c => c.Id == id);
             if (category != null)
             {
-                _dbContext.Categories.Remove(category);
-                await _dbContext.SaveChangesAsync();
-
+                _dataStore.Categories.Remove(category);
                 Categories.Remove(category);
 
                 // Clear category references in recipes
-                foreach (var recipe in Recipes.Where(r => r.CategoryId == id))
+                foreach (var recipe in _dataStore.Recipes.Where(r => r.CategoryId == id))
                 {
                     recipe.Category = null;
                     recipe.CategoryId = null;
                 }
 
                 _logger.LogInformation("Deleted category: {Name}", category.Name);
+                await SaveAsync();
             }
             else
             {
@@ -128,36 +162,32 @@ namespace RecipeApp.Repositories
             if (recipe == null) throw new ArgumentNullException(nameof(recipe));
             if (recipe.Id == Guid.Empty) recipe.Id = Guid.NewGuid();
 
-            // Attach category if exists
-            if (recipe.Category != null)
-                _dbContext.Entry(recipe.Category).State = EntityState.Unchanged;
-
-            await _dbContext.Recipes.AddAsync(recipe);
-            await _dbContext.SaveChangesAsync();
-
+            _dataStore.Recipes.Add(recipe);
             Recipes.Add(recipe);
-            if (recipe.IsFavorite)
-                Favorites.Add(recipe);
+            if (recipe.IsFavorite) Favorites.Add(recipe);
 
             _logger.LogInformation("Added recipe: {Title}", recipe.Title);
+            await SaveAsync();
         }
 
         public async Task UpdateRecipeAsync(Recipe recipe)
         {
             if (recipe == null) throw new ArgumentNullException(nameof(recipe));
 
-            var existing = await _dbContext.Recipes.Include(r => r.Category)
-                                                   .FirstOrDefaultAsync(r => r.Id == recipe.Id);
+            var existing = _dataStore.Recipes.FirstOrDefault(r => r.Id == recipe.Id);
             if (existing != null)
             {
-                _dbContext.Entry(existing).CurrentValues.SetValues(recipe);
+                existing.Title = recipe.Title;
+                existing.Description = recipe.Description;
+                existing.ImageUrl = recipe.ImageUrl;
+                existing.CookingTimeMinutes = recipe.CookingTimeMinutes;
+                existing.Ingredients = recipe.Ingredients;
+                existing.Instructions = recipe.Instructions;
+                existing.Author = recipe.Author;
+                existing.IsFavorite = recipe.IsFavorite;
+                existing.Category = recipe.Category;
+                existing.CategoryId = recipe.Category?.Id;
 
-                // Update category relationship
-                existing.CategoryId = recipe.CategoryId;
-
-                await _dbContext.SaveChangesAsync();
-
-                // Update observable collection
                 var obs = Recipes.First(r => r.Id == recipe.Id);
                 obs.Title = recipe.Title;
                 obs.Description = recipe.Description;
@@ -166,9 +196,9 @@ namespace RecipeApp.Repositories
                 obs.Ingredients = recipe.Ingredients;
                 obs.Instructions = recipe.Instructions;
                 obs.Author = recipe.Author;
-                obs.CategoryId = recipe.CategoryId;
-                obs.Category = recipe.Category;
                 obs.IsFavorite = recipe.IsFavorite;
+                obs.Category = recipe.Category;
+                obs.CategoryId = recipe.Category?.Id;
 
                 if (recipe.IsFavorite && !Favorites.Any(r => r.Id == recipe.Id))
                     Favorites.Add(obs);
@@ -176,6 +206,7 @@ namespace RecipeApp.Repositories
                     Favorites.Remove(obs);
 
                 _logger.LogInformation("Updated recipe: {Title}", recipe.Title);
+                await SaveAsync();
             }
             else
             {
@@ -183,26 +214,24 @@ namespace RecipeApp.Repositories
             }
         }
 
-        public async Task<Recipe?> GetRecipeByIdAsync(Guid id)
+        public Task<Recipe?> GetRecipeByIdAsync(Guid id)
         {
-            var recipe = await _dbContext.Recipes.Include(r => r.Category)
-                                                 .FirstOrDefaultAsync(r => r.Id == id);
+            var recipe = _dataStore.Recipes.FirstOrDefault(r => r.Id == id);
             _logger.LogDebug("GetRecipeByIdAsync({Id}) -> Found: {Found}", id, recipe != null);
-            return recipe;
+            return Task.FromResult(recipe);
         }
 
         public async Task DeleteRecipeAsync(Guid id)
         {
-            var recipe = await _dbContext.Recipes.FindAsync(id);
+            var recipe = _dataStore.Recipes.FirstOrDefault(r => r.Id == id);
             if (recipe != null)
             {
-                _dbContext.Recipes.Remove(recipe);
-                await _dbContext.SaveChangesAsync();
-
+                _dataStore.Recipes.Remove(recipe);
                 Recipes.Remove(recipe);
                 Favorites.Remove(recipe);
 
                 _logger.LogInformation("Deleted recipe: {Title}", recipe.Title);
+                await SaveAsync();
             }
             else
             {
@@ -230,9 +259,7 @@ namespace RecipeApp.Repositories
             recipe.IsFavorite = true;
             Favorites.Add(recipe);
 
-            _dbContext.Recipes.Update(recipe);
-            await _dbContext.SaveChangesAsync();
-
+            await SaveAsync();
             _logger.LogInformation("Added recipe to favorites: {Title}", recipe.Title);
             return true;
         }
@@ -248,9 +275,7 @@ namespace RecipeApp.Repositories
             recipe.IsFavorite = false;
             Favorites.Remove(recipe);
 
-            _dbContext.Recipes.Update(recipe);
-            await _dbContext.SaveChangesAsync();
-
+            await SaveAsync();
             _logger.LogInformation("Removed recipe from favorites: {Title}", recipe.Title);
             return true;
         }
