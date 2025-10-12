@@ -85,7 +85,6 @@ namespace RecipeApp.Shared.Services
             if (category == null) throw new ArgumentNullException(nameof(category));
             if (!Categories.Any(c => c.Id == category.Id))
             {
-                Categories.Add(category);
                 await _recipeRepo.AddCategoryAsync(category); // new method inside RecipeRepository
             }
         }

@@ -193,6 +193,33 @@ namespace RecipeApp.ViewModels
                 return;
             }
 
+            // ---------------------------
+            // Handle new category automatically
+            // ---------------------------
+            Category categoryToUse = null;
+
+            if (!string.IsNullOrWhiteSpace(CategoryText))
+            {
+                // Check if category already exists
+                categoryToUse = Categories
+                    .FirstOrDefault(c => c.Name.Equals(CategoryText.Trim(), StringComparison.OrdinalIgnoreCase));
+
+                if (categoryToUse == null)
+                {
+                    // Create new category
+                    categoryToUse = new Category { Name = CategoryText.Trim() };
+                    await _recipeService.AddCategoryAsync(categoryToUse);
+
+                    // Add to local collection so autocomplete updates immediately
+                    Categories.Add(categoryToUse);
+                }
+            }
+
+            SelectedCategory = categoryToUse;
+
+            // ---------------------------
+            // Update recipe fields
+            // ---------------------------
             Recipe.Title = Title;
             Recipe.Description = Description;
             Recipe.ImageUrl = ImageUrl;
