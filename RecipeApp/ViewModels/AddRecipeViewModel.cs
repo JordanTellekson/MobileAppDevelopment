@@ -169,6 +169,15 @@ namespace RecipeApp.ViewModels
                     .ToList();
             }
 
+            if (SelectedCategory == null && !string.IsNullOrWhiteSpace(CategoryText))
+            {
+                SelectedCategory = new Category { Name = CategoryText };
+                await _recipeService.AddCategoryAsync(SelectedCategory);
+
+                // Add to local collection to show up in autocomplete immediately
+                Categories.Add(SelectedCategory);
+            }
+
             var newRecipe = new Recipe
             {
                 Title = Title,
