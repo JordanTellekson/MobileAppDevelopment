@@ -104,10 +104,20 @@ namespace RecipeApp.ViewModels
 
             try
             {
-                if (!recipe.IsFavorite)
-                    await _recipeService.AddToFavoritesAsync(recipe);
+                if (recipe.IsFavorite)
+                {
+                    await _dialogService.ShowAlertAsync("Already Added",
+                        $"{recipe.Title} is already in your favorites.", "OK");
+                    _logger.LogInformation("Recipe already in favorites: {Title}", recipe.Title);
+                    return;
+                }
 
+                await _recipeService.AddToFavoritesAsync(recipe);
                 recipe.IsFavorite = true;
+
+                await _dialogService.ShowAlertAsync("Added",
+                    $"{recipe.Title} added to favorites!", "OK");
+                _logger.LogInformation("Added recipe to favorites: {Title}", recipe.Title);
 
                 // Sync Favorites collection
                 Favorites.Clear();
@@ -117,6 +127,8 @@ namespace RecipeApp.ViewModels
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to add recipe to favorites: {Title}", recipe.Title);
+                await _dialogService.ShowAlertAsync("Error",
+                    $"Failed to add {recipe.Title} to favorites.", "OK");
             }
         }
 

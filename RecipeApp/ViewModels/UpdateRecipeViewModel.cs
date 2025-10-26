@@ -18,7 +18,6 @@ namespace RecipeApp.ViewModels
         private readonly IRecipeService _recipeService;
         private readonly IDialogService _dialogService;
         private readonly INavigationService _navigationService;
-        private readonly IUserService _userService;
         private readonly ILogger<UpdateRecipeViewModel> _logger;
 
         private bool _isInitializing;
@@ -28,6 +27,7 @@ namespace RecipeApp.ViewModels
 
         public IAsyncRelayCommand SaveRecipeCommand { get; }
         public IAsyncRelayCommand CancelCommand { get; }
+        public IAsyncRelayCommand DeleteRecipeCommand { get; }
         public RelayCommand<Category> SelectCategoryCommand { get; }
 
         private Recipe _recipe;
@@ -89,7 +89,6 @@ namespace RecipeApp.ViewModels
             }
         }
 
-
         private bool _isCategorySuggestionsVisible;
         public bool IsCategorySuggestionsVisible
         {
@@ -119,11 +118,11 @@ namespace RecipeApp.ViewModels
             _recipeService = recipeService;
             _dialogService = dialogService;
             _navigationService = navigationService;
-            _userService = userService;
             _logger = logger;
 
             SaveRecipeCommand = new AsyncRelayCommand(OnSaveAsync);
             CancelCommand = new AsyncRelayCommand(OnCancelAsync);
+            DeleteRecipeCommand = new AsyncRelayCommand(OnDeleteRecipeAsync);
             SelectCategoryCommand = new RelayCommand<Category>(OnSelectCategory);
         }
 
@@ -193,16 +192,12 @@ namespace RecipeApp.ViewModels
 
                 if (!string.IsNullOrWhiteSpace(CategoryText))
                 {
-                    // Check if the typed text exactly matches an existing category
                     var existingCategory = Categories.FirstOrDefault(c =>
                         string.Equals(c.Name, CategoryText.Trim(), StringComparison.OrdinalIgnoreCase));
 
-                    // If the selected category doesn’t match the text, clear it
                     if (SelectedCategory != null &&
                         !string.Equals(SelectedCategory.Name, CategoryText.Trim(), StringComparison.OrdinalIgnoreCase))
-                    {
                         SelectedCategory = null;
-                    }
 
                     if (existingCategory != null)
                     {
@@ -210,7 +205,6 @@ namespace RecipeApp.ViewModels
                     }
                     else
                     {
-                        // Create a new category
                         finalCategory = new Category
                         {
                             Id = Guid.NewGuid(),
@@ -222,7 +216,6 @@ namespace RecipeApp.ViewModels
                     }
                 }
 
-                // Update recipe properties
                 Recipe.Title = Title.Trim();
                 Recipe.Description = Description?.Trim();
                 Recipe.ImageUrl = ImageUrl?.Trim();
@@ -245,10 +238,33 @@ namespace RecipeApp.ViewModels
             }
         }
 
-        private async Task OnCancelAsync()
+        private async Task OnDeleteRecipeAsync()
         {
-            await _navigationService.GoBackAsync();
+            if (Recipe == null) return;
+
+            bool confirm = await _dialogService.ShowConfirmAsync(
+                "Delete Recipe",
+                $"Are you sure you want to delete {Recipe.Title}?",
+                "Confirm",
+                "Cancel");
+
+            if (!confirm)
+                return;
+
+            try
+            {
+                await _recipeService.DeleteRecipeAsync(Recipe.Id);
+                _logger.LogInformation("Deleted recipe: {Title}", Recipe.Title);
+                await _navigationService.GoBackAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to delete recipe: {Title}", Recipe.Title);
+                await _dialogService.ShowAlertAsync("Error", $"Failed to delete {Recipe.Title}.", "OK");
+            }
         }
+
+        private async Task OnCancelAsync() => await _navigationService.GoBackAsync();
 
         #region INotifyPropertyChanged
         public event PropertyChangedEventHandler PropertyChanged;
