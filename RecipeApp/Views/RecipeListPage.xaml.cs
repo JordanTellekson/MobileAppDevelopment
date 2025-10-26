@@ -19,8 +19,7 @@ public partial class RecipeListPage : ContentPage
 
         if (ViewModel != null)
         {
-            // Ensure recipes are loaded from JSON
-            await ViewModel.InitializeAsync();
+            await ViewModel.InitializeAsync(forceReload: true);
         }
     }
 

@@ -21,6 +21,8 @@ namespace RecipeApp.ViewModels
         private readonly IUserService _userService;
         private readonly ILogger<UpdateRecipeViewModel> _logger;
 
+        private bool _isInitializing;
+
         public ObservableCollection<Category> Categories { get; } = new();
         public ObservableCollection<Category> FilteredCategories { get; } = new();
 
@@ -34,6 +36,7 @@ namespace RecipeApp.ViewModels
             get => _recipe;
             set
             {
+                _isInitializing = true;
                 SetProperty(ref _recipe, value);
 
                 if (_recipe != null)
@@ -47,6 +50,8 @@ namespace RecipeApp.ViewModels
                     SelectedCategory = _recipe.Category;
                     CategoryText = SelectedCategory?.Name ?? string.Empty;
                 }
+
+                _isInitializing = false;
             }
         }
 
@@ -74,10 +79,16 @@ namespace RecipeApp.ViewModels
             get => _categoryText;
             set
             {
-                SetProperty(ref _categoryText, value);
-                UpdateFilteredCategories();
+                if (SetProperty(ref _categoryText, value))
+                {
+                    if (!_isInitializing)
+                        SelectedCategory = null;
+
+                    UpdateFilteredCategories();
+                }
             }
         }
+
 
         private bool _isCategorySuggestionsVisible;
         public bool IsCategorySuggestionsVisible
@@ -176,32 +187,54 @@ namespace RecipeApp.ViewModels
                 return;
             }
 
-            // Handle category
-            if (!string.IsNullOrWhiteSpace(CategoryText))
-            {
-                SelectedCategory ??= Categories.FirstOrDefault(c => c.Name.Equals(CategoryText.Trim(), StringComparison.OrdinalIgnoreCase));
-
-                if (SelectedCategory == null)
-                {
-                    SelectedCategory = new Category { Name = CategoryText.Trim() };
-                    await _recipeService.AddCategoryAsync(SelectedCategory);
-                    Categories.Add(SelectedCategory);
-                }
-            }
-
-            // Update recipe properties
-            Recipe.Title = Title;
-            Recipe.Description = Description;
-            Recipe.ImageUrl = ImageUrl;
-            Recipe.CookingTimeMinutes = int.TryParse(CookingTimeMinutes, out var minutes) ? minutes : 0;
-            Recipe.Ingredients = Ingredients?.Split(',').Select(i => i.Trim()).Where(i => !string.IsNullOrWhiteSpace(i)).ToList()
-                                 ?? new List<string>();
-            Recipe.Instructions = Instructions;
-            Recipe.Category = SelectedCategory;
-            Recipe.CategoryId = SelectedCategory?.Id;
-
             try
             {
+                Category finalCategory = null;
+
+                if (!string.IsNullOrWhiteSpace(CategoryText))
+                {
+                    // Check if the typed text exactly matches an existing category
+                    var existingCategory = Categories.FirstOrDefault(c =>
+                        string.Equals(c.Name, CategoryText.Trim(), StringComparison.OrdinalIgnoreCase));
+
+                    // If the selected category doesn’t match the text, clear it
+                    if (SelectedCategory != null &&
+                        !string.Equals(SelectedCategory.Name, CategoryText.Trim(), StringComparison.OrdinalIgnoreCase))
+                    {
+                        SelectedCategory = null;
+                    }
+
+                    if (existingCategory != null)
+                    {
+                        finalCategory = existingCategory;
+                    }
+                    else
+                    {
+                        // Create a new category
+                        finalCategory = new Category
+                        {
+                            Id = Guid.NewGuid(),
+                            Name = CategoryText.Trim()
+                        };
+
+                        await _recipeService.AddCategoryAsync(finalCategory);
+                        Categories.Add(finalCategory);
+                    }
+                }
+
+                // Update recipe properties
+                Recipe.Title = Title.Trim();
+                Recipe.Description = Description?.Trim();
+                Recipe.ImageUrl = ImageUrl?.Trim();
+                Recipe.CookingTimeMinutes = int.TryParse(CookingTimeMinutes, out var minutes) ? minutes : 0;
+                Recipe.Ingredients = Ingredients?.Split(',')
+                    .Select(i => i.Trim())
+                    .Where(i => !string.IsNullOrWhiteSpace(i))
+                    .ToList() ?? new List<string>();
+                Recipe.Instructions = Instructions?.Trim();
+                Recipe.Category = finalCategory;
+                Recipe.CategoryId = finalCategory?.Id;
+
                 await _recipeService.UpdateRecipeAsync(Recipe);
                 await _navigationService.GoBackAsync();
             }

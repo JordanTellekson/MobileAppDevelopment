@@ -65,9 +65,10 @@ namespace RecipeApp.ViewModels
             ToggleThemeCommand = new RelayCommand(ToggleTheme);
         }
 
-        public async Task InitializeAsync()
+        public async Task InitializeAsync(bool forceReload = false)
         {
-            if (_initialized) return;
+            if (_initialized && !forceReload)
+                return;
 
             _initialized = true;
             IsLoading = true;
