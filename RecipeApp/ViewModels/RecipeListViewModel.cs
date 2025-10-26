@@ -1,15 +1,13 @@
 ﻿using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 using RecipeApp.Shared.Models;
-using RecipeApp.Resources.Styles;
 using RecipeApp.Shared.Services;
 using RecipeApp.Services;
+using RecipeApp.Resources.Styles;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Collections.Specialized;
 using System.ComponentModel;
-using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
@@ -23,25 +21,25 @@ namespace RecipeApp.ViewModels
         private readonly IUserService _userService;
         private readonly ILogger<RecipeListViewModel> _logger;
 
-        public ObservableCollection<Recipe> Recipes { get; }
+        public ObservableCollection<Recipe> Recipes { get; } = new();
+        public ObservableCollection<Recipe> Favorites { get; } = new();
 
         public IAsyncRelayCommand<Recipe> RecipeTappedCommand { get; }
         public IAsyncRelayCommand AddRecipeCommand { get; }
         public IAsyncRelayCommand<Recipe> UpdateRecipeCommand { get; }
         public IAsyncRelayCommand<Recipe> ToggleFavoriteCommand { get; }
-        public IRelayCommand NavigateToFavoritesCommand { get; }
+        public IAsyncRelayCommand NavigateToFavoritesCommand { get; }
         public IRelayCommand ToggleThemeCommand { get; }
 
+        private bool _isDarkMode;
         public string CurrentUser => _userService.CurrentUser;
-
-        private bool _isDarkMode = false;
         public string ThemeButtonText => _isDarkMode ? "Light Mode" : "Dark Mode";
 
         private bool _isLoading;
         public bool IsLoading
         {
             get => _isLoading;
-            set { _isLoading = value; OnPropertyChanged(); }
+            set => SetProperty(ref _isLoading, value);
         }
 
         private bool _initialized = false;
@@ -59,39 +57,39 @@ namespace RecipeApp.ViewModels
             _userService = userService;
             _logger = logger;
 
-            Recipes = _recipeService.Recipes;
-
-            // Subscribe to collection changes
-            Recipes.CollectionChanged += Recipes_CollectionChanged;
-
             RecipeTappedCommand = new AsyncRelayCommand<Recipe>(OnRecipeTappedAsync);
             AddRecipeCommand = new AsyncRelayCommand(OnAddRecipeAsync);
             UpdateRecipeCommand = new AsyncRelayCommand<Recipe>(OnUpdateRecipeAsync);
             ToggleFavoriteCommand = new AsyncRelayCommand<Recipe>(OnToggleFavoriteAsync);
-            NavigateToFavoritesCommand = new RelayCommand(OnNavigateToFavorites);
+            NavigateToFavoritesCommand = new AsyncRelayCommand(OnNavigateToFavoritesAsync);
             ToggleThemeCommand = new RelayCommand(ToggleTheme);
-        }
-
-        private void Recipes_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
-        {
-            // Notify UI when the collection changes
-            OnPropertyChanged(nameof(Recipes));
         }
 
         public async Task InitializeAsync()
         {
             if (_initialized) return;
-            _initialized = true;
 
+            _initialized = true;
             IsLoading = true;
+
             try
             {
                 await _recipeService.InitializeAsync();
-                _logger.LogInformation("Recipes initialized. Count: {Count}", Recipes.Count);
+
+                Recipes.Clear();
+                foreach (var r in _recipeService.Recipes)
+                    Recipes.Add(r);
+
+                Favorites.Clear();
+                foreach (var r in _recipeService.Favorites)
+                    Favorites.Add(r);
+
+                _logger.LogInformation("Recipes initialized: {Count}", Recipes.Count);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to initialize recipes");
+                await _dialogService.ShowAlertAsync("Error", "Failed to load recipes.", "OK");
             }
             finally
             {
@@ -105,34 +103,29 @@ namespace RecipeApp.ViewModels
 
             try
             {
-                bool added = await _recipeService.AddToFavoritesAsync(recipe);
+                if (!recipe.IsFavorite)
+                    await _recipeService.AddToFavoritesAsync(recipe);
 
-                if (added)
-                {
-                    recipe.IsFavorite = true;
-                    // Show notification when added successfully
-                    await _dialogService.ShowAlertAsync("Added to Favorites", $"{recipe.Title} was added to your favorites.", "OK");
-                }
-                else
-                {
-                    await _dialogService.ShowAlertAsync("Already a Favorite", $"{recipe.Title} is already in your favorites.", "OK");
-                }
+                recipe.IsFavorite = true;
+
+                // Sync Favorites collection
+                Favorites.Clear();
+                foreach (var r in _recipeService.Favorites)
+                    Favorites.Add(r);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error adding recipe to favorites: {Title}", recipe.Title);
-                await _dialogService.ShowAlertAsync("Error", $"Failed to add {recipe.Title} to favorites.", "OK");
+                _logger.LogError(ex, "Failed to add recipe to favorites: {Title}", recipe.Title);
             }
-
-            OnPropertyChanged(nameof(Recipes));
         }
 
         private async Task OnRecipeTappedAsync(Recipe recipe)
         {
             if (recipe == null) return;
+
             var parameters = new Dictionary<string, object> { { "RecipeId", recipe.Id.ToString() } };
             try { await _navigationService.NavigateToAsync(nameof(Views.RecipeDetailPage), parameters); }
-            catch (Exception ex) { _logger.LogError(ex, "Navigation failed for recipe: {Title}", recipe.Title); }
+            catch (Exception ex) { _logger.LogError(ex, "Navigation failed for recipe {Title}", recipe.Title); }
         }
 
         private async Task OnAddRecipeAsync()
@@ -144,6 +137,7 @@ namespace RecipeApp.ViewModels
         private async Task OnUpdateRecipeAsync(Recipe recipe)
         {
             if (recipe == null) return;
+
             var parameters = new Dictionary<string, object> { { "Recipe", recipe } };
             try { await _navigationService.NavigateToAsync(nameof(Views.UpdateRecipePage), parameters); }
             catch (Exception ex) { _logger.LogError(ex, "Navigation to UpdateRecipePage failed for {Title}", recipe.Title); }
@@ -156,17 +150,16 @@ namespace RecipeApp.ViewModels
             try
             {
                 if (recipe.IsFavorite)
-                {
-                    bool removed = await _recipeService.RemoveFromFavoritesAsync(recipe);
-                    if (removed) recipe.IsFavorite = false;
-                }
+                    await _recipeService.RemoveFromFavoritesAsync(recipe);
                 else
-                {
-                    bool added = await _recipeService.AddToFavoritesAsync(recipe);
-                    if (added) recipe.IsFavorite = true;
-                }
+                    await _recipeService.AddToFavoritesAsync(recipe);
 
-                OnPropertyChanged(nameof(Recipes));
+                recipe.IsFavorite = !recipe.IsFavorite;
+
+                // Sync Favorites collection
+                Favorites.Clear();
+                foreach (var r in _recipeService.Favorites)
+                    Favorites.Add(r);
             }
             catch (Exception ex)
             {
@@ -174,7 +167,7 @@ namespace RecipeApp.ViewModels
             }
         }
 
-        private async void OnNavigateToFavorites()
+        private async Task OnNavigateToFavoritesAsync()
         {
             try { await _navigationService.NavigateToAsync(nameof(Views.FavoriteRecipesPage)); }
             catch (Exception ex) { _logger.LogError(ex, "Navigation to FavoriteRecipesPage failed"); }
@@ -188,8 +181,18 @@ namespace RecipeApp.ViewModels
             OnPropertyChanged(nameof(ThemeButtonText));
         }
 
+        #region INotifyPropertyChanged
         public event PropertyChangedEventHandler PropertyChanged;
         protected void OnPropertyChanged([CallerMemberName] string propertyName = "")
             => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+
+        protected bool SetProperty<T>(ref T backingStore, T value, [CallerMemberName] string propertyName = "")
+        {
+            if (EqualityComparer<T>.Default.Equals(backingStore, value)) return false;
+            backingStore = value;
+            OnPropertyChanged(propertyName);
+            return true;
+        }
+        #endregion
     }
 }

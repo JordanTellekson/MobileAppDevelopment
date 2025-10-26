@@ -5,6 +5,7 @@ using RecipeApp.Shared.Services;
 using RecipeApp.ViewModels;
 using RecipeApp.Views;
 using static RecipeApp.Services.IUserService;
+using System.Net.Http;
 
 namespace RecipeApp
 {
@@ -13,6 +14,7 @@ namespace RecipeApp
         public static MauiApp CreateMauiApp()
         {
             var builder = MauiApp.CreateBuilder();
+
             builder
                 .UseMauiApp<App>()
                 .ConfigureFonts(fonts =>
@@ -27,9 +29,31 @@ namespace RecipeApp
 #endif
 
             // ---------------------------
-            // Repositories
+            // API Base URL
             // ---------------------------
-            builder.Services.AddSingleton<IRecipeRepository, RecipeRepository>();
+#if ANDROID
+            string apiBase = "https://10.0.2.2:7223/"; // Android emulator loopback
+#else
+            string apiBase = "https://localhost:7223/"; // Windows/macOS
+#endif
+
+            // ---------------------------
+            // Repositories with HttpClient
+            // ---------------------------
+            builder.Services.AddHttpClient<IRecipeRepository, ApiRecipeRepository>(client =>
+            {
+                client.BaseAddress = new Uri(apiBase);
+            })
+#if DEBUG
+            // Development: ignore SSL errors (self-signed certs)
+            .ConfigurePrimaryHttpMessageHandler(() =>
+            {
+                return new HttpClientHandler
+                {
+                    ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+                };
+            });
+#endif
 
             // ---------------------------
             // Services

@@ -57,7 +57,7 @@ namespace RecipeApp.Api.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating recipe: {Title}", recipe.Title);
-                return StatusCode(500, "Internal server error while creating recipe.");
+                return StatusCode(500, $"Internal server error: {ex.Message}\n{ex.StackTrace}");
             }
         }
 

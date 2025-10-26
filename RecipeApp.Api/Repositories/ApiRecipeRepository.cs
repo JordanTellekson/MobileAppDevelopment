@@ -128,18 +128,32 @@ namespace RecipeApp.Repositories
             if (recipe == null) throw new ArgumentNullException(nameof(recipe));
             if (recipe.Id == Guid.Empty) recipe.Id = Guid.NewGuid();
 
-            // Attach category if exists
-            if (recipe.Category != null)
-                _dbContext.Entry(recipe.Category).State = EntityState.Unchanged;
+            try
+            {
+                // Attach category properly
+                if (recipe.Category != null)
+                {
+                    if (recipe.Category.Id == Guid.Empty)
+                        recipe.Category.Id = Guid.NewGuid();
 
-            await _dbContext.Recipes.AddAsync(recipe);
-            await _dbContext.SaveChangesAsync();
+                    // Make sure EF doesn’t try to insert duplicate category
+                    _dbContext.Entry(recipe.Category).State = EntityState.Unchanged;
+                }
 
-            Recipes.Add(recipe);
-            if (recipe.IsFavorite)
-                Favorites.Add(recipe);
+                await _dbContext.Recipes.AddAsync(recipe);
+                await _dbContext.SaveChangesAsync();
 
-            _logger.LogInformation("Added recipe: {Title}", recipe.Title);
+                Recipes.Add(recipe);
+                if (recipe.IsFavorite)
+                    Favorites.Add(recipe);
+
+                _logger.LogInformation("✅ Added recipe: {Title}", recipe.Title);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Failed to add recipe: {Title}", recipe.Title);
+                throw; // Let controller handle HTTP 500, but now we’ll see the real cause
+            }
         }
 
         public async Task UpdateRecipeAsync(Recipe recipe)

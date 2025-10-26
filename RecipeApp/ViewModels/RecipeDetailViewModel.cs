@@ -5,26 +5,26 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 using RecipeApp.Shared.Models;
+using RecipeApp.Shared.Services;
 using RecipeApp.Services;
-using RecipeApp.Repositories;
 
 namespace RecipeApp.ViewModels
 {
     [QueryProperty(nameof(RecipeId), "RecipeId")]
     public class RecipeDetailViewModel : INotifyPropertyChanged
     {
-        private readonly IRecipeRepository _repository;
+        private readonly IRecipeService _recipeService;
         private readonly INavigationService _navigationService;
         private readonly IDialogService _dialogService;
         private readonly ILogger<RecipeDetailViewModel> _logger;
 
         public RecipeDetailViewModel(
-            IRecipeRepository repository,
+            IRecipeService recipeService,
             INavigationService navigationService,
             IDialogService dialogService,
             ILogger<RecipeDetailViewModel> logger)
         {
-            _repository = repository;
+            _recipeService = recipeService;
             _navigationService = navigationService;
             _dialogService = dialogService;
             _logger = logger;
@@ -38,9 +38,8 @@ namespace RecipeApp.ViewModels
             get => _recipe;
             set
             {
-                _recipe = value;
-                OnPropertyChanged();
-                OnPropertyChanged(nameof(CategoryDisplay)); // update when recipe changes
+                SetProperty(ref _recipe, value);
+                OnPropertyChanged(nameof(CategoryDisplay));
             }
         }
 
@@ -58,86 +57,81 @@ namespace RecipeApp.ViewModels
 
         public IAsyncRelayCommand ToggleFavoriteCommand { get; }
 
-        public string CategoryDisplay => string.IsNullOrWhiteSpace(Recipe?.CategoryName)
+        public string CategoryDisplay => string.IsNullOrWhiteSpace(Recipe?.Category?.Name)
             ? "Uncategorized"
-            : $"Category: {Recipe.CategoryName}";
+            : $"Category: {Recipe.Category.Name}";
 
         private async Task LoadRecipeAsync()
         {
-            _logger.LogDebug("Attempting to load recipe with ID: {RecipeId}", RecipeId);
-
-            if (Guid.TryParse(RecipeId, out var id))
+            if (!Guid.TryParse(RecipeId, out var id))
             {
-                try
-                {
-                    Recipe = await _repository.GetRecipeByIdAsync(id);
+                _logger.LogWarning("Invalid Recipe ID: {RecipeId}", RecipeId);
+                await _dialogService.ShowAlertAsync("Error", "Invalid Recipe ID", "OK");
+                await _navigationService.GoBackAsync();
+                return;
+            }
 
-                    if (Recipe == null)
-                    {
-                        _logger.LogWarning("Recipe not found with ID: {RecipeId}", RecipeId);
-                        await _dialogService.ShowAlertAsync("Error", "Recipe not found", "OK");
-                        await _navigationService.GoBackAsync();
-                    }
-                    else
-                    {
-                        _logger.LogInformation("Loaded recipe: {Title}", Recipe.Title);
-                    }
-                }
-                catch (Exception ex)
+            try
+            {
+                Recipe = await _recipeService.GetRecipeByIdAsync(id);
+
+                if (Recipe == null)
                 {
-                    _logger.LogError(ex, "Error loading recipe with ID: {RecipeId}", RecipeId);
-                    await _dialogService.ShowAlertAsync("Error", "Failed to load recipe", "OK");
+                    _logger.LogWarning("Recipe not found: {RecipeId}", RecipeId);
+                    await _dialogService.ShowAlertAsync("Error", "Recipe not found", "OK");
                     await _navigationService.GoBackAsync();
                 }
+                else
+                {
+                    _logger.LogInformation("Loaded recipe: {Title}", Recipe.Title);
+                }
             }
-            else
+            catch (Exception ex)
             {
-                _logger.LogWarning("Invalid Recipe ID provided: {RecipeId}", RecipeId);
-                await _dialogService.ShowAlertAsync("Error", "Invalid Recipe ID", "OK");
+                _logger.LogError(ex, "Error loading recipe: {RecipeId}", RecipeId);
+                await _dialogService.ShowAlertAsync("Error", "Failed to load recipe", "OK");
                 await _navigationService.GoBackAsync();
             }
         }
 
         private async Task OnToggleFavoriteAsync()
         {
-            if (Recipe == null)
-            {
-                _logger.LogWarning("ToggleFavoriteCommand called with null recipe");
-                return;
-            }
+            if (Recipe == null) return;
 
             try
             {
                 if (Recipe.IsFavorite)
                 {
-                    bool removed = await _repository.RemoveFromFavoritesAsync(Recipe);
-                    if (removed)
-                    {
+                    if (await _recipeService.RemoveFromFavoritesAsync(Recipe))
                         Recipe.IsFavorite = false;
-                        _logger.LogInformation("Removed recipe from favorites: {Title}", Recipe.Title);
-                    }
                 }
                 else
                 {
-                    bool added = await _repository.AddToFavoritesAsync(Recipe);
-                    if (added)
-                    {
+                    if (await _recipeService.AddToFavoritesAsync(Recipe))
                         Recipe.IsFavorite = true;
-                        _logger.LogInformation("Added recipe to favorites: {Title}", Recipe.Title);
-                    }
                 }
+
+                OnPropertyChanged(nameof(Recipe));
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to toggle favorite status for recipe: {Title}", Recipe.Title);
+                _logger.LogError(ex, "Failed to toggle favorite for recipe: {Title}", Recipe.Title);
                 await _dialogService.ShowAlertAsync("Error", "Failed to update favorites", "OK");
             }
-
-            OnPropertyChanged(nameof(Recipe));
         }
 
+        #region INotifyPropertyChanged
         public event PropertyChangedEventHandler PropertyChanged;
         protected void OnPropertyChanged([CallerMemberName] string propertyName = "")
             => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+
+        protected bool SetProperty<T>(ref T backingStore, T value, [CallerMemberName] string propertyName = "")
+        {
+            if (Equals(backingStore, value)) return false;
+            backingStore = value;
+            OnPropertyChanged(propertyName);
+            return true;
+        }
+        #endregion
     }
 }
