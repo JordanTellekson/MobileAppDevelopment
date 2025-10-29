@@ -1,16 +1,50 @@
 using RecipeApp.Shared.Models;
 using RecipeApp.ViewModels;
+using Microsoft.Maui.Controls;
+using System.Collections.Specialized;
+using RecipeApp.Services; // Add this to access DialogService
 
 namespace RecipeApp.Views;
 
 public partial class RecipeListPage : ContentPage
 {
     private RecipeListViewModel ViewModel => BindingContext as RecipeListViewModel;
+    private readonly IDialogService _dialogService;
 
-    public RecipeListPage(RecipeListViewModel viewModel)
+    public RecipeListPage(RecipeListViewModel viewModel, IDialogService dialogService)
     {
         InitializeComponent();
         BindingContext = viewModel;
+        _dialogService = dialogService;
+
+        // Initial toolbar setup
+        UpdateToolbar();
+
+        // Refresh toolbar whenever ToolbarItems changes
+        viewModel.ToolbarItems.CollectionChanged += ToolbarItems_CollectionChanged;
+
+        // Subscribe to authentication changes
+        viewModel.UserService.AuthenticationStateChanged += OnAuthenticationStateChanged;
+    }
+
+    private void ToolbarItems_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+    {
+        UpdateToolbar();
+    }
+
+    private void OnAuthenticationStateChanged(bool isAuthenticated)
+    {
+        // Refresh toolbar on main thread
+        MainThread.BeginInvokeOnMainThread(UpdateToolbar);
+    }
+
+    private void UpdateToolbar()
+    {
+        ToolbarItems.Clear();
+        if (ViewModel?.ToolbarItems == null) return;
+
+        foreach (var item in ViewModel.ToolbarItems)
+            ToolbarItems.Add(item);
     }
 
     protected override async void OnAppearing()
@@ -19,7 +53,18 @@ public partial class RecipeListPage : ContentPage
 
         if (ViewModel != null)
         {
-            await ViewModel.InitializeAsync(forceReload: true);
+            UpdateToolbar();
+            await ViewModel.InitializeAsync(forceReload: false);
+        }
+    }
+
+    protected override void OnDisappearing()
+    {
+        base.OnDisappearing();
+        if (ViewModel != null)
+        {
+            ViewModel.ToolbarItems.CollectionChanged -= ToolbarItems_CollectionChanged;
+            ViewModel.UserService.AuthenticationStateChanged -= OnAuthenticationStateChanged;
         }
     }
 
@@ -27,18 +72,29 @@ public partial class RecipeListPage : ContentPage
     {
         if (sender is SwipeView swipeView && swipeView.BindingContext is Recipe recipe)
         {
-            if (ViewModel != null)
+            if (ViewModel?.UserService?.IsAuthenticated != true)
             {
-                try
-                {
-                    await ViewModel.AddToFavoritesAsync(recipe);
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Failed to add recipe to favorites: {ex.Message}");
-                }
+                await _dialogService.ShowAlertAsync(
+                    "Login Required",
+                    "Please sign in to favorite recipes.",
+                    "OK"
+                );
+
+                // Instantly close the swipe to prevent it from staying open
+                swipeView.Close();
+                return;
             }
-            swipeView.Close(); // reset swipe visually
+
+            try
+            {
+                await ViewModel.AddToFavoritesAsync(recipe);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to add recipe to favorites: {ex.Message}");
+            }
+
+            swipeView.Close();
         }
     }
 }

@@ -4,7 +4,6 @@ using RecipeApp.Services;
 using RecipeApp.Shared.Services;
 using RecipeApp.ViewModels;
 using RecipeApp.Views;
-using static RecipeApp.Services.IUserService;
 using System.Net.Http;
 
 namespace RecipeApp
@@ -46,23 +45,43 @@ namespace RecipeApp
                 client.BaseAddress = new Uri(apiBase);
             })
 #if DEBUG
-            // Development: ignore SSL errors (self-signed certs)
             .ConfigurePrimaryHttpMessageHandler(() =>
             {
                 return new HttpClientHandler
                 {
-                    ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+                    ServerCertificateCustomValidationCallback =
+                        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
                 };
             });
 #endif
 
             // ---------------------------
-            // Services
+            // UserService as singleton with logging
+            // ---------------------------
+            builder.Services.AddSingleton<IUserService>(sp =>
+            {
+                var logger = sp.GetRequiredService<ILogger<UserService>>();
+
+#if DEBUG
+                var handler = new HttpClientHandler
+                {
+                    ServerCertificateCustomValidationCallback =
+                        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+                };
+                var client = new HttpClient(handler) { BaseAddress = new Uri(apiBase) };
+#else
+    var client = new HttpClient { BaseAddress = new Uri(apiBase) };
+#endif
+
+                return new UserService(client, logger);
+            });
+
+            // ---------------------------
+            // Other services
             // ---------------------------
             builder.Services.AddSingleton<IRecipeService, RecipeService>();
-            builder.Services.AddTransient<IDialogService, DialogService>();
-            builder.Services.AddTransient<INavigationService, NavigationService>();
-            builder.Services.AddTransient<IUserService, UserService>();
+            builder.Services.AddSingleton<IDialogService, DialogService>();
+            builder.Services.AddSingleton<INavigationService, NavigationService>();
 
             // ---------------------------
             // ViewModels
@@ -72,6 +91,8 @@ namespace RecipeApp
             builder.Services.AddTransient<RecipeDetailViewModel>();
             builder.Services.AddTransient<UpdateRecipeViewModel>();
             builder.Services.AddTransient<FavoriteRecipesViewModel>();
+            builder.Services.AddTransient<RegisterViewModel>();
+            builder.Services.AddTransient<LoginViewModel>();
 
             // ---------------------------
             // Pages
@@ -81,6 +102,8 @@ namespace RecipeApp
             builder.Services.AddTransient<RecipeDetailPage>();
             builder.Services.AddTransient<UpdateRecipePage>();
             builder.Services.AddTransient<FavoriteRecipesPage>();
+            builder.Services.AddTransient<RegisterPage>();
+            builder.Services.AddTransient<LoginPage>();
 
             return builder.Build();
         }

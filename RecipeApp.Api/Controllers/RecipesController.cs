@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using RecipeApp.Shared.Models;
 using RecipeApp.Shared.Services;
@@ -23,14 +24,16 @@ namespace RecipeApp.Api.Controllers
 
         // GET: api/recipes
         [HttpGet]
+        [AllowAnonymous]
         public async Task<ActionResult<IEnumerable<Recipe>>> GetAll()
         {
-            await _recipeService.InitializeAsync(); // Reload data from database
+            await _recipeService.InitializeAsync();
             return Ok(_recipeService.Recipes);
         }
 
         // GET: api/recipes/{id}
         [HttpGet("{id:guid}")]
+        [AllowAnonymous]
         public async Task<ActionResult<Recipe>> GetById(Guid id)
         {
             var recipe = await _recipeService.GetRecipeByIdAsync(id);
@@ -42,6 +45,7 @@ namespace RecipeApp.Api.Controllers
 
         // POST: api/recipes
         [HttpPost]
+        [Authorize]
         public async Task<ActionResult<Recipe>> Create([FromBody] Recipe recipe)
         {
             if (recipe == null)
@@ -50,7 +54,7 @@ namespace RecipeApp.Api.Controllers
             try
             {
                 await _recipeService.AddRecipeAsync(recipe);
-                await _recipeService.InitializeAsync(); // Reload to include new recipe
+                await _recipeService.InitializeAsync();
                 return CreatedAtAction(nameof(GetById), new { id = recipe.Id }, recipe);
             }
             catch (Exception ex)
@@ -62,6 +66,7 @@ namespace RecipeApp.Api.Controllers
 
         // PUT: api/recipes/{id}
         [HttpPut("{id:guid}")]
+        [Authorize]
         public async Task<IActionResult> Update(Guid id, [FromBody] Recipe recipe)
         {
             if (recipe == null || id != recipe.Id)
@@ -70,7 +75,7 @@ namespace RecipeApp.Api.Controllers
             try
             {
                 await _recipeService.UpdateRecipeAsync(recipe);
-                await _recipeService.InitializeAsync(); // Reload to update collection
+                await _recipeService.InitializeAsync();
                 return NoContent();
             }
             catch (Exception ex)
@@ -82,12 +87,13 @@ namespace RecipeApp.Api.Controllers
 
         // DELETE: api/recipes/{id}
         [HttpDelete("{id:guid}")]
+        [Authorize]
         public async Task<IActionResult> Delete(Guid id)
         {
             try
             {
                 await _recipeService.DeleteRecipeAsync(id);
-                await _recipeService.InitializeAsync(); // Reload to update collection
+                await _recipeService.InitializeAsync();
                 return NoContent();
             }
             catch (Exception ex)
@@ -99,6 +105,7 @@ namespace RecipeApp.Api.Controllers
 
         // POST: api/recipes/{id}/favorite
         [HttpPost("{id:guid}/favorite")]
+        [Authorize]
         public async Task<IActionResult> AddToFavorites(Guid id)
         {
             var recipe = await _recipeService.GetRecipeByIdAsync(id);
@@ -110,7 +117,7 @@ namespace RecipeApp.Api.Controllers
                 if (!added)
                     return BadRequest("Recipe is already a favorite.");
 
-                await _recipeService.InitializeAsync(); // Reload favorites
+                await _recipeService.InitializeAsync();
                 return Ok(recipe);
             }
             catch (Exception ex)
@@ -122,6 +129,7 @@ namespace RecipeApp.Api.Controllers
 
         // DELETE: api/recipes/{id}/favorite
         [HttpDelete("{id:guid}/favorite")]
+        [Authorize]
         public async Task<IActionResult> RemoveFromFavorites(Guid id)
         {
             var recipe = await _recipeService.GetRecipeByIdAsync(id);
@@ -133,7 +141,7 @@ namespace RecipeApp.Api.Controllers
                 if (!removed)
                     return BadRequest("Recipe was not in favorites.");
 
-                await _recipeService.InitializeAsync(); // Reload favorites
+                await _recipeService.InitializeAsync();
                 return NoContent();
             }
             catch (Exception ex)

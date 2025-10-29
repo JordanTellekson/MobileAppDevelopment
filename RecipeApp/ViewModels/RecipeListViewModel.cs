@@ -10,10 +10,11 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+using Microsoft.Maui.Controls;
 
 namespace RecipeApp.ViewModels
 {
-    public class RecipeListViewModel : INotifyPropertyChanged
+    public class RecipeListViewModel : INotifyPropertyChanged, IDisposable
     {
         private readonly IRecipeService _recipeService;
         private readonly IDialogService _dialogService;
@@ -21,18 +22,28 @@ namespace RecipeApp.ViewModels
         private readonly IUserService _userService;
         private readonly ILogger<RecipeListViewModel> _logger;
 
+        public IUserService UserService => _userService;
+
         public ObservableCollection<Recipe> Recipes { get; } = new();
         public ObservableCollection<Recipe> Favorites { get; } = new();
 
+        // Toolbar items for dynamic show/hide
+        public ObservableCollection<ToolbarItem> ToolbarItems { get; } = new();
+
+        // Commands
         public IAsyncRelayCommand<Recipe> RecipeTappedCommand { get; }
         public IAsyncRelayCommand AddRecipeCommand { get; }
         public IAsyncRelayCommand<Recipe> UpdateRecipeCommand { get; }
         public IAsyncRelayCommand<Recipe> ToggleFavoriteCommand { get; }
         public IAsyncRelayCommand NavigateToFavoritesCommand { get; }
         public IRelayCommand ToggleThemeCommand { get; }
+        public IAsyncRelayCommand LogoutCommand { get; }
+        public IAsyncRelayCommand NavigateToRegisterCommand { get; }
+        public IAsyncRelayCommand NavigateToLoginCommand { get; }
+        public IAsyncRelayCommand RefreshCommand { get; }
 
         private bool _isDarkMode;
-        public string CurrentUser => _userService.CurrentUser;
+        public string CurrentUser => _userService.CurrentUsername;
         public string ThemeButtonText => _isDarkMode ? "Light Mode" : "Dark Mode";
 
         private bool _isLoading;
@@ -42,14 +53,29 @@ namespace RecipeApp.ViewModels
             set => SetProperty(ref _isLoading, value);
         }
 
+        private bool _isAuthenticated;
+
+        public bool IsAuthenticated
+        {
+            get => _isAuthenticated;
+            set => SetProperty(ref _isAuthenticated, value);
+        }
+
+        private bool _isRefreshing;
+        public bool IsRefreshing
+        {
+            get => _isRefreshing;
+            set => SetProperty(ref _isRefreshing, value);
+        }
+
         private bool _initialized = false;
 
         public RecipeListViewModel(
-            IRecipeService recipeService,
-            IDialogService dialogService,
-            INavigationService navigationService,
-            IUserService userService,
-            ILogger<RecipeListViewModel> logger)
+    IRecipeService recipeService,
+    IDialogService dialogService,
+    INavigationService navigationService,
+    IUserService userService,
+    ILogger<RecipeListViewModel> logger)
         {
             _recipeService = recipeService;
             _dialogService = dialogService;
@@ -57,18 +83,100 @@ namespace RecipeApp.ViewModels
             _userService = userService;
             _logger = logger;
 
+            _isAuthenticated = _userService.IsAuthenticated;
+
+            // Subscribe to authentication state changes
+            _userService.AuthenticationStateChanged += OnAuthenticationStateChanged;
+
+            // Recipe commands
             RecipeTappedCommand = new AsyncRelayCommand<Recipe>(OnRecipeTappedAsync);
             AddRecipeCommand = new AsyncRelayCommand(OnAddRecipeAsync);
             UpdateRecipeCommand = new AsyncRelayCommand<Recipe>(OnUpdateRecipeAsync);
             ToggleFavoriteCommand = new AsyncRelayCommand<Recipe>(OnToggleFavoriteAsync);
             NavigateToFavoritesCommand = new AsyncRelayCommand(OnNavigateToFavoritesAsync);
+
+            // UI commands
             ToggleThemeCommand = new RelayCommand(ToggleTheme);
+            LogoutCommand = new AsyncRelayCommand(LogoutAsync);
+            NavigateToRegisterCommand = new AsyncRelayCommand(NavigateToRegisterAsync);
+            NavigateToLoginCommand = new AsyncRelayCommand(NavigateToLoginAsync);
+            RefreshCommand = new AsyncRelayCommand(RefreshRecipesAsync);
+
+            // Initial toolbar setup using current authentication state
+            BuildToolbar(_userService.IsAuthenticated);
         }
 
+        // 🔹 Updated signature for event handler
+        private void OnAuthenticationStateChanged(bool isAuthenticated)
+        {
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                IsAuthenticated = isAuthenticated;
+                BuildToolbar(isAuthenticated);
+            });
+        }
+
+        private async Task RefreshRecipesAsync()
+        {
+            if (_recipeService == null) return;
+
+            try
+            {
+                IsRefreshing = true;
+                // Reload recipes
+                await _recipeService.InitializeAsync();
+
+                Recipes.Clear();
+                foreach (var r in _recipeService.Recipes)
+                    Recipes.Add(r);
+
+                Favorites.Clear();
+                foreach (var r in _recipeService.Favorites)
+                    Favorites.Add(r);
+            }
+            catch (Exception ex)
+            {
+                await _dialogService.ShowAlertAsync("Error", "Failed to refresh recipes.", "OK");
+            }
+            finally
+            {
+                IsRefreshing = false;
+            }
+        }
+
+        #region Toolbar Management
+        public void BuildToolbar(bool isAuthenticated)
+        {
+            ToolbarItems.Clear();
+
+            if (isAuthenticated)
+            {
+                ToolbarItems.Add(new ToolbarItem("Add", null, async () => await AddRecipeCommand.ExecuteAsync(null)));
+                ToolbarItems.Add(new ToolbarItem("Favorites", null, async () => await NavigateToFavoritesCommand.ExecuteAsync(null)));
+                ToolbarItems.Add(new ToolbarItem("Theme", null, () => ToggleThemeCommand.Execute(null)));
+                ToolbarItems.Add(new ToolbarItem("Logout", null, async () => await LogoutCommand.ExecuteAsync(null)));
+            }
+            else
+            {
+                ToolbarItems.Add(new ToolbarItem("Register", null, async () => await NavigateToRegisterCommand.ExecuteAsync(null)));
+                ToolbarItems.Add(new ToolbarItem("Login", null, async () => await NavigateToLoginCommand.ExecuteAsync(null)));
+            }
+        }
+        #endregion
+
+        public async Task LogoutAsync()
+        {
+            _userService.Logout(); // 🔹 Fires AuthenticationStateChanged(false)
+            await _navigationService.NavigateToAsync(nameof(Views.LoginPage));
+        }
+
+        private Task NavigateToRegisterAsync() => _navigationService.NavigateToAsync(nameof(Views.RegisterPage));
+        private Task NavigateToLoginAsync() => _navigationService.NavigateToAsync(nameof(Views.LoginPage));
+
+        #region Recipes & Favorites
         public async Task InitializeAsync(bool forceReload = false)
         {
-            if (_initialized && !forceReload)
-                return;
+            if (_initialized && !forceReload) return;
 
             _initialized = true;
             IsLoading = true;
@@ -160,6 +268,17 @@ namespace RecipeApp.ViewModels
         {
             if (recipe == null) return;
 
+            if (!_userService.IsAuthenticated)
+            {
+                await _dialogService.ShowAlertAsync(
+                    "Login Required",
+                    "You must be logged in to favorite recipes.",
+                    "OK"
+                );
+                _logger.LogInformation("Favorite action blocked: user not authenticated.");
+                return;
+            }
+
             try
             {
                 if (recipe.IsFavorite)
@@ -173,10 +292,13 @@ namespace RecipeApp.ViewModels
                 Favorites.Clear();
                 foreach (var r in _recipeService.Favorites)
                     Favorites.Add(r);
+
+                _logger.LogInformation("Favorite toggled for recipe: {Title}", recipe.Title);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to toggle favorite for {Title}", recipe.Title);
+                await _dialogService.ShowAlertAsync("Error", $"Failed to toggle favorite for {recipe.Title}.", "OK");
             }
         }
 
@@ -185,7 +307,9 @@ namespace RecipeApp.ViewModels
             try { await _navigationService.NavigateToAsync(nameof(Views.FavoriteRecipesPage)); }
             catch (Exception ex) { _logger.LogError(ex, "Navigation to FavoriteRecipesPage failed"); }
         }
+        #endregion
 
+        #region Theme
         private void ToggleTheme()
         {
             _isDarkMode = !_isDarkMode;
@@ -193,8 +317,14 @@ namespace RecipeApp.ViewModels
             App.Current.Resources.MergedDictionaries.Add(_isDarkMode ? new DarkTheme() : new LightTheme());
             OnPropertyChanged(nameof(ThemeButtonText));
         }
+        #endregion
 
-        #region INotifyPropertyChanged
+        #region Cleanup & INotifyPropertyChanged
+        public void Dispose()
+        {
+            _userService.AuthenticationStateChanged -= OnAuthenticationStateChanged;
+        }
+
         public event PropertyChangedEventHandler PropertyChanged;
         protected void OnPropertyChanged([CallerMemberName] string propertyName = "")
             => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));

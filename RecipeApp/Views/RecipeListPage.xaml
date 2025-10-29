@@ -8,84 +8,87 @@
              Title="Recipes"
              BackgroundColor="{DynamicResource PageBackgroundColor}">
 
+    <Shell.BackButtonBehavior>
+        <BackButtonBehavior IsVisible="False" IsEnabled="False" />
+    </Shell.BackButtonBehavior>
+
     <ContentPage.Resources>
         <ResourceDictionary>
             <conv:AuthorToButtonVisibilityConverter x:Key="AuthorToButtonVisibilityConverter" />
         </ResourceDictionary>
     </ContentPage.Resources>
 
-    <ContentPage.ToolbarItems>
-        <ToolbarItem Text="Add" Command="{Binding AddRecipeCommand}" />
-        <ToolbarItem Text="Favorites" Command="{Binding NavigateToFavoritesCommand}" />
-        <ToolbarItem x:Name="ThemeToggleButton" 
-                     Text="{Binding ThemeButtonText}" 
-                     Command="{Binding ToggleThemeCommand}" />
-    </ContentPage.ToolbarItems>
+    <RefreshView 
+        Command="{Binding RefreshCommand}" 
+        IsRefreshing="{Binding IsRefreshing}" 
+        RefreshColor="{DynamicResource PrimaryTextColor}">
 
-    <CollectionView x:Name="RecipeCollection" ItemsSource="{Binding Recipes}">
-        <CollectionView.EmptyView>
-            <StackLayout Padding="20">
-                <Label Text="No recipes available." 
-                       FontSize="18" 
-                       TextColor="{DynamicResource SecondaryTextColor}" 
-                       HorizontalOptions="Center" 
-                       VerticalOptions="Center"/>
-            </StackLayout>
-        </CollectionView.EmptyView>
+        <CollectionView x:Name="RecipeCollection" ItemsSource="{Binding Recipes}">
+            <CollectionView.EmptyView>
+                <StackLayout Padding="20">
+                    <Label Text="No recipes available."
+                           FontSize="18"
+                           TextColor="{DynamicResource SecondaryTextColor}"
+                           HorizontalOptions="Center"
+                           VerticalOptions="Center" />
+                </StackLayout>
+            </CollectionView.EmptyView>
 
-        <CollectionView.ItemTemplate>
-            <DataTemplate>
-                <!-- SwipeView triggers AddToFavoritesCommand on swipe release -->
-                <SwipeView SwipeEnded="OnSwipeEnded">
-                    <SwipeView.RightItems>
-                        <SwipeItems Mode="Reveal">
-                            <SwipeItem Text="Favorite"
-                                       BackgroundColor="Transparent"
-                                       Command="{Binding BindingContext.ToggleFavoriteCommand, Source={x:Reference RecipeCollection}}"
-                                       CommandParameter="{Binding .}" />
-                        </SwipeItems>
-                    </SwipeView.RightItems>
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <SwipeView x:Name="SwipeRoot">
+                        <SwipeView.RightItems>
+                            <SwipeItems Mode="Execute">
+                                <SwipeItem
+                                    Text="Favorite"
+                                    BackgroundColor="#FFECE5"
+                                    Command="{Binding BindingContext.ToggleFavoriteCommand, Source={x:Reference RecipeCollection}}"
+                                    CommandParameter="{Binding .}" />
+                            </SwipeItems>
+                        </SwipeView.RightItems>
 
-                    <Frame Margin="10" Padding="10" CornerRadius="12" HasShadow="True"
-                           BackgroundColor="{DynamicResource CardBackgroundColor}"
-                           BorderColor="{DynamicResource CardBorderColor}">
-                        <Frame.GestureRecognizers>
-                            <TapGestureRecognizer 
-                                Command="{Binding BindingContext.RecipeTappedCommand, Source={x:Reference RecipeCollection}}"
-                                CommandParameter="{Binding .}" />
-                        </Frame.GestureRecognizers>
+                        <Frame Margin="10" Padding="10" CornerRadius="12" HasShadow="True"
+                               BackgroundColor="{DynamicResource CardBackgroundColor}"
+                               BorderColor="{DynamicResource CardBorderColor}">
+                            <Frame.GestureRecognizers>
+                                <TapGestureRecognizer
+                                    Command="{Binding BindingContext.RecipeTappedCommand, Source={x:Reference RecipeCollection}}"
+                                    CommandParameter="{Binding .}" />
+                            </Frame.GestureRecognizers>
 
-                        <StackLayout>
-                            <Grid>
-                                <Image Source="{Binding ImageUrl}" HeightRequest="150" Aspect="AspectFill"/>
-                                <Label Text="♥"
-                                       FontSize="24"
-                                       TextColor="Red"
-                                       HorizontalOptions="End"
-                                       VerticalOptions="Start"
-                                       Margin="5"
-                                       IsVisible="{Binding IsFavorite}" />
-                            </Grid>
+                            <StackLayout>
+                                <Grid>
+                                    <Image Source="{Binding ImageUrl}" HeightRequest="150" Aspect="AspectFill" />
+                                    <Label Text="♥"
+                                           FontSize="24"
+                                           TextColor="Red"
+                                           HorizontalOptions="End"
+                                           VerticalOptions="Start"
+                                           Margin="5"
+                                           IsVisible="{Binding IsFavorite}" />
+                                </Grid>
 
-                            <Label Text="{Binding Title}" FontSize="18" FontAttributes="Bold"
-                                   TextColor="{DynamicResource PrimaryTextColor}"/>
-                            <Label Text="{Binding Description}" FontSize="14"
-                                   TextColor="{DynamicResource SecondaryTextColor}"/>
-                            <Label Text="{Binding Author, StringFormat='By: {0}'}" FontSize="18"
-                                   TextColor="{DynamicResource PrimaryTextColor}" />
+                                <Label Text="{Binding Title}" FontSize="18" FontAttributes="Bold"
+                                       TextColor="{DynamicResource PrimaryTextColor}" />
+                                <Label Text="{Binding Description}" FontSize="14"
+                                       TextColor="{DynamicResource SecondaryTextColor}" />
+                                <Label Text="{Binding Author, StringFormat='By: {0}'}" FontSize="18"
+                                       TextColor="{DynamicResource PrimaryTextColor}" />
 
-                            <Button Text="Update"
-                                    IsVisible="{Binding Author, 
-                                        Converter={StaticResource AuthorToButtonVisibilityConverter}, 
-                                        ConverterParameter={x:Reference PageRoot}}" 
-                                    Command="{Binding BindingContext.UpdateRecipeCommand, Source={x:Reference RecipeCollection}}"
-                                    CommandParameter="{Binding .}"
-                                    BackgroundColor="{DynamicResource ButtonBackgroundColor}"
-                                    TextColor="{DynamicResource ButtonTextColor}" />
-                        </StackLayout>
-                    </Frame>
-                </SwipeView>
-            </DataTemplate>
-        </CollectionView.ItemTemplate>
-    </CollectionView>
+                                <Button Text="Update"
+                                        IsVisible="{Binding Author,
+                                            Converter={StaticResource AuthorToButtonVisibilityConverter},
+                                            ConverterParameter={x:Reference PageRoot}}"
+                                        Command="{Binding BindingContext.UpdateRecipeCommand, Source={x:Reference RecipeCollection}}"
+                                        CommandParameter="{Binding .}"
+                                        BackgroundColor="{DynamicResource ButtonBackgroundColor}"
+                                        TextColor="{DynamicResource ButtonTextColor}" />
+                            </StackLayout>
+                        </Frame>
+                    </SwipeView>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+    </RefreshView>
 </ContentPage>

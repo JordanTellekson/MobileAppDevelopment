@@ -179,7 +179,7 @@ namespace RecipeApp.ViewModels
                 CookingTimeMinutes = cookingTime,
                 Ingredients = ingredientList,
                 Instructions = Instructions,
-                Author = _userService.CurrentUser,
+                Author = _userService.CurrentUsername,
                 Category = SelectedCategory,
                 CategoryId = SelectedCategory?.Id ?? Guid.Empty
             };

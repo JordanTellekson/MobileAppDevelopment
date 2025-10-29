@@ -17,6 +17,10 @@
 
     <ShellContent Route="RecipeFavoritesPage" ContentTemplate="{DataTemplate views:FavoriteRecipesPage}" />
 
+    <ShellContent Route="LoginPage" ContentTemplate="{DataTemplate views:LoginPage}" />
+
+    <ShellContent Route="RegisterPage" ContentTemplate="{DataTemplate views:RegisterPage}" />
+
     <ShellContent Title="Home" ContentTemplate="{DataTemplate local:MainPage}" Route="MainPage" />
 
 </Shell>

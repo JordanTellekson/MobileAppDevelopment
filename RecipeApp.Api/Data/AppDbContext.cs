@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.ChangeTracking;
 using RecipeApp.Shared.Models;
 using System.Linq;
 
-namespace RecipeApp.Repositories
+namespace RecipeApp.Api.Data
 {
     public class AppDbContext : DbContext
     {
@@ -14,6 +14,7 @@ namespace RecipeApp.Repositories
 
         public DbSet<Recipe> Recipes { get; set; } = null!;
         public DbSet<Category> Categories { get; set; } = null!;
+        public DbSet<User> Users { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

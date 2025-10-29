@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:RecipeApp.ViewModels"
+             xmlns:conv="clr-namespace:RecipeApp.Converters"
+             x:Class="RecipeApp.Views.RegisterPage"
+             x:Name="PageRoot"
+             Title="Register"
+             BackgroundColor="{DynamicResource PageBackgroundColor}">
+
+    <ContentPage.Resources>
+        <ResourceDictionary>
+            <conv:StringNotEmptyConverter x:Key="StringNotEmptyConverter" />
+        </ResourceDictionary>
+    </ContentPage.Resources>
+
+    <ScrollView>
+        <VerticalStackLayout Padding="30" Spacing="20">
+
+            <!-- Page Title -->
+            <Label Text="Create Account"
+                   FontSize="28"
+                   HorizontalOptions="Center"
+                   FontAttributes="Bold"
+                   TextColor="{DynamicResource PrimaryTextColor}" />
+
+            <!-- Username Entry -->
+            <Entry Placeholder="Username"
+                   Text="{Binding Username}"
+                   BackgroundColor="{DynamicResource EntryBackgroundColor}"
+                   TextColor="{DynamicResource PrimaryTextColor}" />
+
+            <!-- Password Entry -->
+            <Entry Placeholder="Password"
+                   Text="{Binding Password}"
+                   IsPassword="True"
+                   BackgroundColor="{DynamicResource EntryBackgroundColor}"
+                   TextColor="{DynamicResource PrimaryTextColor}" />
+
+            <!-- Validation Message -->
+            <Label Text="{Binding ErrorMessage}"
+                   TextColor="Red"
+                   FontAttributes="Italic"
+                   LineBreakMode="WordWrap"
+                   IsVisible="{Binding ErrorMessage, Converter={StaticResource StringNotEmptyConverter}}" />
+
+            <!-- Register Button -->
+            <Button Text="Register"
+                    Command="{Binding RegisterCommand}"
+                    BackgroundColor="{DynamicResource ButtonBackgroundColor}"
+                    TextColor="{DynamicResource ButtonTextColor}"
+                    IsEnabled="{Binding IsRegisterEnabled}" />
+
+            <!-- Loading Indicator -->
+            <ActivityIndicator IsRunning="{Binding IsBusy}"
+                               IsVisible="{Binding IsBusy}" 
+                               Color="{DynamicResource PrimaryTextColor}" />
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

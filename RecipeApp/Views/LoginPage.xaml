@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:RecipeApp.ViewModels"
+             xmlns:conv="clr-namespace:RecipeApp.Converters"
+             x:Class="RecipeApp.Views.LoginPage"
+             x:Name="PageRoot"
+             Title="Login"
+             BackgroundColor="{DynamicResource PageBackgroundColor}">
+
+    <ContentPage.Resources>
+        <ResourceDictionary>
+            <conv:StringNotEmptyConverter x:Key="StringNotEmptyConverter" />
+        </ResourceDictionary>
+    </ContentPage.Resources>
+
+    <ScrollView>
+        <VerticalStackLayout Padding="30" Spacing="20">
+
+            <!-- Page Title -->
+            <Label Text="Welcome Back!"
+                   FontSize="28"
+                   HorizontalOptions="Center"
+                   FontAttributes="Bold"
+                   TextColor="{DynamicResource PrimaryTextColor}" />
+
+            <!-- Username Entry -->
+            <Entry Placeholder="Username"
+                   Text="{Binding Username}"
+                   BackgroundColor="{DynamicResource EntryBackgroundColor}"
+                   TextColor="{DynamicResource PrimaryTextColor}" />
+
+            <!-- Password Entry -->
+            <Entry Placeholder="Password"
+                   Text="{Binding Password}"
+                   IsPassword="True"
+                   BackgroundColor="{DynamicResource EntryBackgroundColor}"
+                   TextColor="{DynamicResource PrimaryTextColor}" />
+
+            <!-- Validation/Error Message -->
+            <Label Text="{Binding ErrorMessage}"
+                   TextColor="Red"
+                   FontAttributes="Italic"
+                   LineBreakMode="WordWrap"
+                   IsVisible="{Binding ErrorMessage, Converter={StaticResource StringNotEmptyConverter}}" />
+
+            <!-- Login Button -->
+            <Button Text="Login"
+                    Command="{Binding LoginCommand}"
+                    BackgroundColor="{DynamicResource ButtonBackgroundColor}"
+                    TextColor="{DynamicResource ButtonTextColor}" />
+
+            <!-- Loading Indicator -->
+            <ActivityIndicator IsRunning="{Binding IsBusy}"
+                               IsVisible="{Binding IsBusy}"
+                               Color="{DynamicResource PrimaryTextColor}" />
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
