@@ -71,11 +71,11 @@ namespace RecipeApp.ViewModels
         private bool _initialized = false;
 
         public RecipeListViewModel(
-    IRecipeService recipeService,
-    IDialogService dialogService,
-    INavigationService navigationService,
-    IUserService userService,
-    ILogger<RecipeListViewModel> logger)
+            IRecipeService recipeService,
+            IDialogService dialogService,
+            INavigationService navigationService,
+            IUserService userService,
+            ILogger<RecipeListViewModel> logger)
         {
             _recipeService = recipeService;
             _dialogService = dialogService;
@@ -114,6 +114,11 @@ namespace RecipeApp.ViewModels
                 IsAuthenticated = isAuthenticated;
                 BuildToolbar(isAuthenticated);
             });
+
+            if (!isAuthenticated)
+            {
+                ResetTheme();
+            }
         }
 
         private async Task RefreshRecipesAsync()
@@ -315,6 +320,14 @@ namespace RecipeApp.ViewModels
             _isDarkMode = !_isDarkMode;
             App.Current.Resources.MergedDictionaries.Clear();
             App.Current.Resources.MergedDictionaries.Add(_isDarkMode ? new DarkTheme() : new LightTheme());
+            OnPropertyChanged(nameof(ThemeButtonText));
+        }
+
+        public void ResetTheme()
+        {
+            _isDarkMode = false; // Always light
+            App.Current.Resources.MergedDictionaries.Clear();
+            App.Current.Resources.MergedDictionaries.Add(new LightTheme());
             OnPropertyChanged(nameof(ThemeButtonText));
         }
         #endregion

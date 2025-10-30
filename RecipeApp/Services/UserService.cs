@@ -27,6 +27,20 @@ namespace RecipeApp.Services
             _logger = logger;
         }
 
+        private void ApplyAuthHeader()
+        {
+            if (!string.IsNullOrWhiteSpace(CurrentToken))
+            {
+                _httpClient.DefaultRequestHeaders.Authorization =
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", CurrentToken);
+            }
+            else
+            {
+                // Remove header if no token
+                _httpClient.DefaultRequestHeaders.Authorization = null;
+            }
+        }
+
         public async Task<bool> LoginAsync(string username, string password)
         {
             try
@@ -35,6 +49,8 @@ namespace RecipeApp.Services
 
                 var request = new AuthRequest { Username = username, Password = password };
                 var response = await _httpClient.PostAsJsonAsync("api/auth/login", request);
+
+                ApplyAuthHeader();
 
                 if (!response.IsSuccessStatusCode)
                 {
@@ -75,6 +91,8 @@ namespace RecipeApp.Services
                 var request = new RegisterRequest { Username = username, Password = password, Role = role };
                 var response = await _httpClient.PostAsJsonAsync("api/auth/register", request);
 
+                ApplyAuthHeader();
+
                 if (!response.IsSuccessStatusCode)
                 {
                     _logger.LogWarning("Registration failed for user {Username}, status code: {StatusCode}", username, response.StatusCode);
@@ -112,6 +130,8 @@ namespace RecipeApp.Services
             CurrentToken = string.Empty;
             CurrentUsername = string.Empty;
             CurrentRole = string.Empty;
+
+            _httpClient.DefaultRequestHeaders.Authorization = null;
 
             // 🔹 Notify subscribers
             AuthenticationStateChanged?.Invoke(false);

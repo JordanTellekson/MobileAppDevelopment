@@ -40,8 +40,7 @@
                         <SwipeView.RightItems>
                             <SwipeItems Mode="Execute">
                                 <SwipeItem
-                                    Text="Favorite"
-                                    BackgroundColor="#FFECE5"
+                                    BackgroundColor="{DynamicResource PageBackgroundColor}"
                                     Command="{Binding BindingContext.ToggleFavoriteCommand, Source={x:Reference RecipeCollection}}"
                                     CommandParameter="{Binding .}" />
                             </SwipeItems>

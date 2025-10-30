@@ -2,25 +2,25 @@
 using RecipeApp.Shared.Services;
 using System.Collections.ObjectModel;
 using System.Net.Http.Json;
+using System.Net.Http.Headers;
+using RecipeApp.Services;
 
 namespace RecipeApp.Repositories
 {
     public class ApiRecipeRepository : IRecipeRepository
     {
         private readonly HttpClient _httpClient;
+        private readonly IUserService _userService;
 
         public ObservableCollection<Recipe> Recipes { get; } = new();
         public ObservableCollection<Recipe> Favorites { get; } = new();
         public ObservableCollection<Category> Categories { get; } = new();
 
-        public ApiRecipeRepository(HttpClient httpClient)
+        public ApiRecipeRepository(HttpClient httpClient, IUserService userService)
         {
             _httpClient = httpClient;
+            _userService = userService;
 
-            // ---------------------------
-            // For Android Emulator, use 10.0.2.2 to reach localhost
-            // For iOS Simulator or Windows, adjust as needed
-            // ---------------------------
 #if ANDROID
             _httpClient.BaseAddress ??= new Uri("https://10.0.2.2:7246/");
 #else
@@ -36,7 +36,6 @@ namespace RecipeApp.Repositories
             var recipes = await SafeGetAsync<List<Recipe>>("api/recipes") ?? new List<Recipe>();
             var categories = await SafeGetAsync<List<Category>>("api/categories") ?? new List<Category>();
 
-            // Clear + add so bindings remain intact
             Recipes.Clear();
             foreach (var r in recipes)
             {
@@ -60,7 +59,7 @@ namespace RecipeApp.Repositories
         // ---------------------------
         public async Task AddRecipeAsync(Recipe recipe)
         {
-            if (await SendAsync(HttpMethod.Post, "api/recipes", recipe))
+            if (await SendAuthorizedAsync(HttpMethod.Post, "api/recipes", recipe))
             {
                 Recipes.Add(recipe);
                 if (recipe.IsFavorite)
@@ -70,7 +69,7 @@ namespace RecipeApp.Repositories
 
         public async Task UpdateRecipeAsync(Recipe recipe)
         {
-            if (await SendAsync(HttpMethod.Put, $"api/recipes/{recipe.Id}", recipe))
+            if (await SendAuthorizedAsync(HttpMethod.Put, $"api/recipes/{recipe.Id}", recipe))
             {
                 var existing = Recipes.FirstOrDefault(r => r.Id == recipe.Id);
                 if (existing != null)
@@ -93,7 +92,7 @@ namespace RecipeApp.Repositories
 
         public async Task DeleteRecipeAsync(Guid id)
         {
-            if (await SendAsync(HttpMethod.Delete, $"api/recipes/{id}"))
+            if (await SendAuthorizedAsync(HttpMethod.Delete, $"api/recipes/{id}"))
             {
                 var existing = Recipes.FirstOrDefault(r => r.Id == id);
                 if (existing != null)
@@ -111,7 +110,7 @@ namespace RecipeApp.Repositories
         // ---------------------------
         public async Task<bool> AddToFavoritesAsync(Recipe recipe)
         {
-            var success = await SendAsync(HttpMethod.Post, $"api/recipes/{recipe.Id}/favorite");
+            var success = await SendAuthorizedAsync(HttpMethod.Post, $"api/recipes/{recipe.Id}/favorite");
             if (success)
             {
                 recipe.IsFavorite = true;
@@ -123,7 +122,7 @@ namespace RecipeApp.Repositories
 
         public async Task<bool> RemoveFromFavoritesAsync(Recipe recipe)
         {
-            var success = await SendAsync(HttpMethod.Delete, $"api/recipes/{recipe.Id}/favorite");
+            var success = await SendAuthorizedAsync(HttpMethod.Delete, $"api/recipes/{recipe.Id}/favorite");
             if (success)
             {
                 recipe.IsFavorite = false;
@@ -137,13 +136,13 @@ namespace RecipeApp.Repositories
         // ---------------------------
         public async Task AddCategoryAsync(Category category)
         {
-            if (await SendAsync(HttpMethod.Post, "api/categories", category))
+            if (await SendAuthorizedAsync(HttpMethod.Post, "api/categories", category))
                 Categories.Add(category);
         }
 
         public async Task UpdateCategoryAsync(Category category)
         {
-            if (await SendAsync(HttpMethod.Put, $"api/categories/{category.Id}", category))
+            if (await SendAuthorizedAsync(HttpMethod.Put, $"api/categories/{category.Id}", category))
             {
                 var existing = Categories.FirstOrDefault(c => c.Id == category.Id);
                 if (existing != null)
@@ -156,7 +155,7 @@ namespace RecipeApp.Repositories
 
         public async Task DeleteCategoryAsync(Guid id)
         {
-            if (await SendAsync(HttpMethod.Delete, $"api/categories/{id}"))
+            if (await SendAuthorizedAsync(HttpMethod.Delete, $"api/categories/{id}"))
             {
                 var existing = Categories.FirstOrDefault(c => c.Id == id);
                 if (existing != null)
@@ -187,6 +186,9 @@ namespace RecipeApp.Repositories
             }
         }
 
+        /// <summary>
+        /// Sends a request without requiring authentication.
+        /// </summary>
         private async Task<bool> SendAsync(HttpMethod method, string url, object? data = null)
         {
             try
@@ -196,21 +198,52 @@ namespace RecipeApp.Repositories
                     request.Content = JsonContent.Create(data);
 
                 var response = await _httpClient.SendAsync(request);
-
-                // Log the failure reason
-                if (!response.IsSuccessStatusCode)
-                {
-                    var errorContent = await response.Content.ReadAsStringAsync();
-                    Console.WriteLine($"❌ Request failed: {(int)response.StatusCode} {response.ReasonPhrase}");
-                    Console.WriteLine($"Response body: {errorContent}");
-                }
-
+                await LogResponse(response);
                 return response.IsSuccessStatusCode;
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"❌ Exception in SendAsync: {ex}");
                 return false;
+            }
+        }
+
+        /// <summary>
+        /// Sends a request that requires authentication.
+        /// </summary>
+        private async Task<bool> SendAuthorizedAsync(HttpMethod method, string url, object? data = null)
+        {
+            try
+            {
+                var request = new HttpRequestMessage(method, url);
+
+                // Attach Bearer token if available
+                if (!string.IsNullOrWhiteSpace(_userService.CurrentToken))
+                {
+                    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _userService.CurrentToken);
+                }
+
+                if (data != null)
+                    request.Content = JsonContent.Create(data);
+
+                var response = await _httpClient.SendAsync(request);
+                await LogResponse(response);
+                return response.IsSuccessStatusCode;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Exception in SendAuthorizedAsync: {ex}");
+                return false;
+            }
+        }
+
+        private async Task LogResponse(HttpResponseMessage response)
+        {
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"❌ Request failed: {(int)response.StatusCode} {response.ReasonPhrase}");
+                Console.WriteLine($"Response body: {errorContent}");
             }
         }
     }
