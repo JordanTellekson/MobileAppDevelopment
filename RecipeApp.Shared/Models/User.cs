@@ -9,5 +9,6 @@ namespace RecipeApp.Shared.Models
         public string PasswordHash { get; set; } = string.Empty;
         public string Role { get; set; } = "User";
         public string? Token { get; set; }
+        public string PreferredTheme { get; set; } = "Light";
     }
 }

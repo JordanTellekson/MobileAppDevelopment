@@ -60,5 +60,28 @@ namespace RecipeApp.Api.Controllers
                 return StatusCode(500, "Internal server error.");
             }
         }
+
+        // PUT: api/auth/theme
+        [HttpPut("theme")]
+        public async Task<IActionResult> UpdateTheme([FromBody] ThemeUpdate dto)
+        {
+            if (dto == null)
+                return BadRequest("Theme update data is missing.");
+
+            try
+            {
+                var success = await _authService.UpdateThemeAsync(dto);
+                if (!success)
+                    return NotFound("User not found.");
+
+                return Ok("Theme updated successfully.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating theme for user {Username}", dto.Username);
+                return StatusCode(500, "Internal server error.");
+            }
+        }
+
     }
 }

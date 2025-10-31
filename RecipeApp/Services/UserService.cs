@@ -5,6 +5,8 @@ using System.Net.Http.Json;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using System;
+using Microsoft.Maui.Controls;
+using RecipeApp.Resources.Styles;
 
 namespace RecipeApp.Services
 {
@@ -16,9 +18,9 @@ namespace RecipeApp.Services
         public string CurrentToken { get; set; } = string.Empty;
         public string CurrentUsername { get; set; } = string.Empty;
         public string CurrentRole { get; set; } = string.Empty;
+        public string PreferredTheme { get; set; } = "Light";
         public bool IsAuthenticated => !string.IsNullOrWhiteSpace(CurrentToken);
 
-        // 🔹 New event implementation
         public event Action<bool> AuthenticationStateChanged;
 
         public UserService(HttpClient httpClient, ILogger<UserService> logger)
@@ -36,9 +38,19 @@ namespace RecipeApp.Services
             }
             else
             {
-                // Remove header if no token
                 _httpClient.DefaultRequestHeaders.Authorization = null;
             }
+        }
+
+        // 🔹 Helper to switch themes at runtime
+        public void ApplyTheme(string theme)
+        {
+            Application.Current.Resources.MergedDictionaries.Clear();
+
+            if (theme == "Dark")
+                Application.Current.Resources.MergedDictionaries.Add(new DarkTheme());
+            else
+                Application.Current.Resources.MergedDictionaries.Add(new LightTheme());
         }
 
         public async Task<bool> LoginAsync(string username, string password)
@@ -49,8 +61,6 @@ namespace RecipeApp.Services
 
                 var request = new AuthRequest { Username = username, Password = password };
                 var response = await _httpClient.PostAsJsonAsync("api/auth/login", request);
-
-                ApplyAuthHeader();
 
                 if (!response.IsSuccessStatusCode)
                 {
@@ -64,10 +74,12 @@ namespace RecipeApp.Services
                     CurrentToken = authResponse.Token;
                     CurrentUsername = authResponse.Username;
                     CurrentRole = authResponse.Role;
+                    PreferredTheme = authResponse.PreferredTheme;
+
+                    ApplyAuthHeader();
+                    ApplyTheme(PreferredTheme);
 
                     _logger.LogInformation("Login successful for user: {Username}", username);
-
-                    // 🔹 Notify subscribers
                     AuthenticationStateChanged?.Invoke(true);
                     return true;
                 }
@@ -91,8 +103,6 @@ namespace RecipeApp.Services
                 var request = new RegisterRequest { Username = username, Password = password, Role = role };
                 var response = await _httpClient.PostAsJsonAsync("api/auth/register", request);
 
-                ApplyAuthHeader();
-
                 if (!response.IsSuccessStatusCode)
                 {
                     _logger.LogWarning("Registration failed for user {Username}, status code: {StatusCode}", username, response.StatusCode);
@@ -105,10 +115,12 @@ namespace RecipeApp.Services
                     CurrentToken = authResponse.Token;
                     CurrentUsername = authResponse.Username;
                     CurrentRole = authResponse.Role;
+                    PreferredTheme = authResponse.PreferredTheme;
+
+                    ApplyAuthHeader();
+                    ApplyTheme(PreferredTheme);
 
                     _logger.LogInformation("Registration successful for user: {Username}", username);
-
-                    // 🔹 Notify subscribers
                     AuthenticationStateChanged?.Invoke(true);
                     return true;
                 }
@@ -123,6 +135,38 @@ namespace RecipeApp.Services
             }
         }
 
+        public async Task<bool> UpdateThemeAsync(string newTheme)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(CurrentUsername))
+                    return false;
+
+                var dto = new ThemeUpdate
+                {
+                    Username = CurrentUsername,
+                    Theme = newTheme
+                };
+
+                var response = await _httpClient.PutAsJsonAsync("api/auth/theme", dto);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    PreferredTheme = newTheme;
+                    ApplyTheme(newTheme);
+                    return true;
+                }
+
+                _logger.LogWarning("Failed to update theme for {Username}, status: {Status}", CurrentUsername, response.StatusCode);
+                return false;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating theme for {Username}", CurrentUsername);
+                return false;
+            }
+        }
+
         public void Logout()
         {
             _logger.LogInformation("Logging out user: {Username}", CurrentUsername);
@@ -130,10 +174,11 @@ namespace RecipeApp.Services
             CurrentToken = string.Empty;
             CurrentUsername = string.Empty;
             CurrentRole = string.Empty;
+            PreferredTheme = "Light";
 
             _httpClient.DefaultRequestHeaders.Authorization = null;
 
-            // 🔹 Notify subscribers
+            ApplyTheme("Light");
             AuthenticationStateChanged?.Invoke(false);
         }
     }

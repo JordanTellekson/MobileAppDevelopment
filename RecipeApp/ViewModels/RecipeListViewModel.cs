@@ -113,12 +113,18 @@ namespace RecipeApp.ViewModels
             {
                 IsAuthenticated = isAuthenticated;
                 BuildToolbar(isAuthenticated);
-            });
 
-            if (!isAuthenticated)
-            {
-                ResetTheme();
-            }
+                if (isAuthenticated)
+                {
+                    // 🔹 Apply the user’s saved preference
+                    ApplyTheme(_userService.PreferredTheme ?? "Light");
+                }
+                else
+                {
+                    // 🔹 Reset when logged out
+                    ResetTheme();
+                }
+            });
         }
 
         private async Task RefreshRecipesAsync()
@@ -315,17 +321,50 @@ namespace RecipeApp.ViewModels
         #endregion
 
         #region Theme
-        private void ToggleTheme()
+        private void ApplyTheme(string theme)
         {
-            _isDarkMode = !_isDarkMode;
             App.Current.Resources.MergedDictionaries.Clear();
-            App.Current.Resources.MergedDictionaries.Add(_isDarkMode ? new DarkTheme() : new LightTheme());
+
+            if (theme.Equals("Dark", StringComparison.OrdinalIgnoreCase))
+            {
+                App.Current.Resources.MergedDictionaries.Add(new DarkTheme());
+                _isDarkMode = true;
+            }
+            else
+            {
+                App.Current.Resources.MergedDictionaries.Add(new LightTheme());
+                _isDarkMode = false;
+            }
+
             OnPropertyChanged(nameof(ThemeButtonText));
+        }
+
+        // Called when user taps the theme toggle button
+        private async void ToggleTheme()
+        {
+            if (!_userService.IsAuthenticated)
+            {
+                await _dialogService.ShowAlertAsync("Not Logged In", "You must be logged in to change themes.", "OK");
+                return;
+            }
+
+            var newTheme = _isDarkMode ? "Light" : "Dark";
+            _logger.LogInformation("User toggling theme to {Theme}", newTheme);
+
+            // Update locally right away
+            ApplyTheme(newTheme);
+
+            // Persist to backend
+            var success = await _userService.UpdateThemeAsync(newTheme);
+            if (!success)
+            {
+                await _dialogService.ShowAlertAsync("Error", "Failed to save theme preference.", "OK");
+            }
         }
 
         public void ResetTheme()
         {
-            _isDarkMode = false; // Always light
+            _isDarkMode = false;
             App.Current.Resources.MergedDictionaries.Clear();
             App.Current.Resources.MergedDictionaries.Add(new LightTheme());
             OnPropertyChanged(nameof(ThemeButtonText));

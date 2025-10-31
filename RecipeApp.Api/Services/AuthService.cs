@@ -33,7 +33,8 @@ namespace RecipeApp.Api.Services
             {
                 Username = request.Username,
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
-                Role = request.Role
+                Role = request.Role,
+                PreferredTheme = "Light" // Default theme when user is created
             };
 
             _context.Users.Add(user);
@@ -51,6 +52,7 @@ namespace RecipeApp.Api.Services
             return GenerateJwtToken(user);
         }
 
+        // Helper to generate JWT and include theme preference
         private AuthResponse GenerateJwtToken(User user)
         {
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]));
@@ -75,8 +77,20 @@ namespace RecipeApp.Api.Services
             {
                 Token = new JwtSecurityTokenHandler().WriteToken(token),
                 Username = user.Username,
-                Role = user.Role
+                Role = user.Role,
+                PreferredTheme = user.PreferredTheme // Include saved theme
             };
+        }
+
+        public async Task<bool> UpdateThemeAsync(ThemeUpdate dto)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == dto.Username);
+            if (user == null)
+                return false;
+
+            user.PreferredTheme = dto.Theme;
+            await _context.SaveChangesAsync();
+            return true;
         }
     }
 }

@@ -7,5 +7,6 @@ namespace RecipeApp.Shared.Services
     {
         Task<AuthResponse?> RegisterAsync(RegisterRequest request);
         Task<AuthResponse?> LoginAsync(AuthRequest request);
+        Task<bool> UpdateThemeAsync(ThemeUpdate dto);
     }
 }

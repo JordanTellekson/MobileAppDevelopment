@@ -61,6 +61,7 @@ namespace RecipeApp.ViewModels
                 }
 
                 _logger.LogInformation("Login successful for user: {Username}", Username);
+ 
 
                 try
                 {
