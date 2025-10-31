@@ -1,8 +1,8 @@
+using Microsoft.Maui.Controls;
+using RecipeApp.Services; // Add this to access DialogService
 using RecipeApp.Shared.Models;
 using RecipeApp.ViewModels;
-using Microsoft.Maui.Controls;
 using System.Collections.Specialized;
-using RecipeApp.Services; // Add this to access DialogService
 
 namespace RecipeApp.Views;
 
@@ -51,10 +51,9 @@ public partial class RecipeListPage : ContentPage
     {
         base.OnAppearing();
 
-        if (ViewModel != null)
+        if (!ViewModel.IsLoading)
         {
-            UpdateToolbar();
-            await ViewModel.InitializeAsync(forceReload: false);
+            await ViewModel.SoftRefreshRecipesAsync();
         }
     }
 

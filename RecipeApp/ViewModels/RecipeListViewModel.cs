@@ -127,7 +127,7 @@ namespace RecipeApp.ViewModels
             });
         }
 
-        private async Task RefreshRecipesAsync()
+        public async Task RefreshRecipesAsync()
         {
             if (_recipeService == null) return;
 
@@ -152,6 +152,61 @@ namespace RecipeApp.ViewModels
             finally
             {
                 IsRefreshing = false;
+            }
+        }
+
+        public async Task SoftRefreshRecipesAsync()
+        {
+            if (_recipeService == null) return;
+
+            try
+            {
+                // Get fresh data from the backend without resetting everything
+                var oldRecipes = new List<Recipe>(Recipes);
+                var oldFavorites = new List<Recipe>(Favorites);
+
+                await _recipeService.InitializeAsync();
+
+                // Update Recipes collection efficiently
+                UpdateCollection(Recipes, _recipeService.Recipes);
+
+                // Update Favorites collection efficiently
+                UpdateCollection(Favorites, _recipeService.Favorites);
+            }
+            catch (Exception)
+            {
+                await _dialogService.ShowAlertAsync("Error", "Failed to refresh recipes.", "OK");
+            }
+        }
+
+        private void UpdateCollection(ObservableCollection<Recipe> target, IEnumerable<Recipe> source)
+        {
+            var targetSet = new HashSet<Guid>(target.Select(r => r.Id));
+
+            // Add new recipes
+            foreach (var recipe in source)
+            {
+                if (!targetSet.Contains(recipe.Id))
+                    target.Add(recipe);
+            }
+
+            // Remove deleted recipes
+            for (int i = target.Count - 1; i >= 0; i--)
+            {
+                if (!source.Any(r => r.Id == target[i].Id))
+                    target.RemoveAt(i);
+            }
+
+            // Update modified recipes (title, favorites, etc.)
+            foreach (var recipe in source)
+            {
+                var existing = target.FirstOrDefault(r => r.Id == recipe.Id);
+                if (existing != null)
+                {
+                    existing.Title = recipe.Title;
+                    existing.ImageUrl = recipe.ImageUrl;
+                    existing.IsFavorite = recipe.IsFavorite;
+                }
             }
         }
 
