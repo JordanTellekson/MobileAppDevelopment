@@ -7,7 +7,7 @@ using RecipeApp.Services;
 
 namespace RecipeApp.Repositories
 {
-    public class ApiRecipeRepository : IRecipeRepository
+    public class ClientRecipeRepository : IRecipeRepository
     {
         private readonly HttpClient _httpClient;
         private readonly IUserService _userService;
@@ -16,7 +16,7 @@ namespace RecipeApp.Repositories
         public ObservableCollection<Recipe> Favorites { get; } = new();
         public ObservableCollection<Category> Categories { get; } = new();
 
-        public ApiRecipeRepository(HttpClient httpClient, IUserService userService)
+        public ClientRecipeRepository(HttpClient httpClient, IUserService userService)
         {
             _httpClient = httpClient;
             _userService = userService;

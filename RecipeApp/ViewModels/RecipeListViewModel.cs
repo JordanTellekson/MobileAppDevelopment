@@ -233,7 +233,7 @@ namespace RecipeApp.ViewModels
         public async Task LogoutAsync()
         {
             _userService.Logout(); // 🔹 Fires AuthenticationStateChanged(false)
-            await _navigationService.NavigateToAsync(nameof(Views.LoginPage));
+            await _navigationService.NavigateToAsync(nameof(Views.RecipeListPage));
         }
 
         private Task NavigateToRegisterAsync() => _navigationService.NavigateToAsync(nameof(Views.RegisterPage));

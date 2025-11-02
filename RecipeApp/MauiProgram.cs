@@ -40,7 +40,7 @@ namespace RecipeApp
             // ---------------------------
             // Repositories with HttpClient
             // ---------------------------
-            builder.Services.AddHttpClient<IRecipeRepository, ApiRecipeRepository>(client =>
+            builder.Services.AddHttpClient<IRecipeRepository, ClientRecipeRepository>(client =>
             {
                 client.BaseAddress = new Uri(apiBase);
             })
