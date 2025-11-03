@@ -160,5 +160,11 @@ namespace RecipeApp.Shared.Services
             var category = Categories.FirstOrDefault(c => c.Id == id);
             return Task.FromResult(category);
         }
+
+        public async Task<IEnumerable<Recipe>> InitializeAndGetAllAsync()
+        {
+            await InitializeAsync();
+            return Recipes;
+        }
     }
 }

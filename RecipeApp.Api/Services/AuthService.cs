@@ -60,10 +60,12 @@ namespace RecipeApp.Api.Services
 
             var claims = new[]
             {
-                new Claim(JwtRegisteredClaimNames.Sub, user.Username),
-                new Claim(ClaimTypes.Role, user.Role),
-                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
-            };
+        new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+        new Claim(JwtRegisteredClaimNames.Sub, user.Username),
+        new Claim(ClaimTypes.Name, user.Username),
+        new Claim(ClaimTypes.Role, user.Role),
+        new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+    };
 
             var token = new JwtSecurityToken(
                 issuer: _config["Jwt:Issuer"],
@@ -78,7 +80,7 @@ namespace RecipeApp.Api.Services
                 Token = new JwtSecurityTokenHandler().WriteToken(token),
                 Username = user.Username,
                 Role = user.Role,
-                PreferredTheme = user.PreferredTheme // Include saved theme
+                PreferredTheme = user.PreferredTheme
             };
         }
 

@@ -24,8 +24,8 @@ builder.Services.AddScoped<IRecipeService, RecipeService>();
 // Add User service and repository
 builder.Services.AddScoped<IUserRepository, ApiUserRepository>();
 builder.Services.AddScoped<IUserService, UserService>();
-
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IFavoriteService, FavoriteService>();
 
 // -----------------------------
 // Swagger/OpenAPI

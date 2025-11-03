@@ -50,8 +50,18 @@ namespace RecipeApp.Repositories
                 Categories.Add(c);
 
             Favorites.Clear();
-            foreach (var f in Recipes.Where(r => r.IsFavorite))
-                Favorites.Add(f);
+
+            if (!string.IsNullOrWhiteSpace(_userService.CurrentToken))
+            {
+                var userFavorites = await GetFavoritesAsync();
+                var favoriteIds = userFavorites.Select(f => f.Id).ToHashSet();
+
+                foreach (var recipe in Recipes)
+                    recipe.IsFavorite = favoriteIds.Contains(recipe.Id);
+
+                foreach (var f in Recipes.Where(r => r.IsFavorite))
+                    Favorites.Add(f);
+            }
         }
 
         // ---------------------------
@@ -110,7 +120,10 @@ namespace RecipeApp.Repositories
         // ---------------------------
         public async Task<bool> AddToFavoritesAsync(Recipe recipe)
         {
-            var success = await SendAuthorizedAsync(HttpMethod.Post, $"api/recipes/{recipe.Id}/favorite");
+            if (string.IsNullOrWhiteSpace(_userService.CurrentToken))
+                return false;
+
+            var success = await SendAuthorizedAsync(HttpMethod.Post, $"api/favorites/{recipe.Id}");
             if (success)
             {
                 recipe.IsFavorite = true;
@@ -122,13 +135,39 @@ namespace RecipeApp.Repositories
 
         public async Task<bool> RemoveFromFavoritesAsync(Recipe recipe)
         {
-            var success = await SendAuthorizedAsync(HttpMethod.Delete, $"api/recipes/{recipe.Id}/favorite");
+            if (string.IsNullOrWhiteSpace(_userService.CurrentToken))
+                return false;
+
+            var success = await SendAuthorizedAsync(HttpMethod.Delete, $"api/favorites/{recipe.Id}");
             if (success)
             {
                 recipe.IsFavorite = false;
                 Favorites.Remove(recipe);
             }
             return success;
+        }
+
+        public async Task<IEnumerable<Recipe>> GetFavoritesAsync()
+        {
+            if (string.IsNullOrWhiteSpace(_userService.CurrentToken))
+                return new List<Recipe>();
+
+            try
+            {
+                var request = new HttpRequestMessage(HttpMethod.Get, "api/favorites");
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _userService.CurrentToken);
+
+                var response = await _httpClient.SendAsync(request);
+                response.EnsureSuccessStatusCode();
+
+                var favorites = await response.Content.ReadFromJsonAsync<IEnumerable<Recipe>>() ?? new List<Recipe>();
+                return favorites;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Error getting favorites: {ex}");
+                return new List<Recipe>();
+            }
         }
 
         // ---------------------------

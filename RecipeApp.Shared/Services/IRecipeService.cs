@@ -21,5 +21,6 @@ namespace RecipeApp.Shared.Services
         Task<Category?> GetCategoryByIdAsync(Guid id);
         Task<bool> AddToFavoritesAsync(Recipe recipe);
         Task<bool> RemoveFromFavoritesAsync(Recipe recipe);
+        Task<IEnumerable<Recipe>> InitializeAndGetAllAsync();
     }
 }
