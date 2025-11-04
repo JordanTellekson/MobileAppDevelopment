@@ -360,6 +360,8 @@ namespace RecipeApp.ViewModels
                     Favorites.Add(r);
 
                 _logger.LogInformation("Favorite toggled for recipe: {Title}", recipe.Title);
+
+                await SoftRefreshRecipesAsync();
             }
             catch (Exception ex)
             {

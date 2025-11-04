@@ -102,53 +102,5 @@ namespace RecipeApp.Api.Controllers
                 return StatusCode(500, "Internal server error while deleting recipe.");
             }
         }
-
-        // POST: api/recipes/{id}/favorite
-        [HttpPost("{id:guid}/favorite")]
-        [Authorize]
-        public async Task<IActionResult> AddToFavorites(Guid id)
-        {
-            var recipe = await _recipeService.GetRecipeByIdAsync(id);
-            if (recipe == null) return NotFound($"Recipe with id {id} not found.");
-
-            try
-            {
-                bool added = await _recipeService.AddToFavoritesAsync(recipe);
-                if (!added)
-                    return BadRequest("Recipe is already a favorite.");
-
-                await _recipeService.InitializeAsync();
-                return Ok(recipe);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error adding recipe to favorites: {Title}", recipe.Title);
-                return StatusCode(500, "Internal server error while adding to favorites.");
-            }
-        }
-
-        // DELETE: api/recipes/{id}/favorite
-        [HttpDelete("{id:guid}/favorite")]
-        [Authorize]
-        public async Task<IActionResult> RemoveFromFavorites(Guid id)
-        {
-            var recipe = await _recipeService.GetRecipeByIdAsync(id);
-            if (recipe == null) return NotFound($"Recipe with id {id} not found.");
-
-            try
-            {
-                bool removed = await _recipeService.RemoveFromFavoritesAsync(recipe);
-                if (!removed)
-                    return BadRequest("Recipe was not in favorites.");
-
-                await _recipeService.InitializeAsync();
-                return NoContent();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error removing recipe from favorites: {Title}", recipe.Title);
-                return StatusCode(500, "Internal server error while removing from favorites.");
-            }
-        }
     }
 }
