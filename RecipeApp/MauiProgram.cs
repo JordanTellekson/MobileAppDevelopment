@@ -62,16 +62,16 @@ namespace RecipeApp
             {
                 var logger = sp.GetRequiredService<ILogger<UserService>>();
 
-#if DEBUG
-                var handler = new HttpClientHandler
-                {
-                    ServerCertificateCustomValidationCallback =
-                        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
-                };
-                var client = new HttpClient(handler) { BaseAddress = new Uri(apiBase) };
-#else
-    var client = new HttpClient { BaseAddress = new Uri(apiBase) };
-#endif
+                #if DEBUG
+                                var handler = new HttpClientHandler
+                                {
+                                    ServerCertificateCustomValidationCallback =
+                                        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+                                };
+                                var client = new HttpClient(handler) { BaseAddress = new Uri(apiBase) };
+                #else
+                    var client = new HttpClient { BaseAddress = new Uri(apiBase) };
+                #endif
 
                 return new UserService(client, logger);
             });
@@ -82,6 +82,23 @@ namespace RecipeApp
             builder.Services.AddSingleton<IRecipeService, RecipeService>();
             builder.Services.AddSingleton<IDialogService, DialogService>();
             builder.Services.AddSingleton<INavigationService, NavigationService>();
+
+            builder.Services.AddHttpClient<IFavoriteService, ClientFavoriteService>(client =>
+            {
+                client.BaseAddress = new Uri(apiBase);
+            })
+                #if DEBUG
+                .ConfigurePrimaryHttpMessageHandler(() =>
+                {
+                    return new HttpClientHandler
+                    {
+                        ServerCertificateCustomValidationCallback =
+                            HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+                    };
+                });
+                #else
+                ;
+                #endif
 
             // ---------------------------
             // ViewModels

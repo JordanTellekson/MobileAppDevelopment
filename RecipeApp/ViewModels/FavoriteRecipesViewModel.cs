@@ -14,23 +14,26 @@ namespace RecipeApp.ViewModels
 {
     public class FavoriteRecipesViewModel : INotifyPropertyChanged
     {
-        private readonly IRecipeService _recipeService;
+        private readonly IFavoriteService _favoriteService;
+        private readonly IUserService _userService;
         private readonly INavigationService _navigationService;
         private readonly IDialogService _dialogService;
         private readonly ILogger<FavoriteRecipesViewModel> _logger;
 
         public FavoriteRecipesViewModel(
-            IRecipeService recipeService,
+            IFavoriteService favoriteService,
+            IUserService userService,
             INavigationService navigationService,
             IDialogService dialogService,
             ILogger<FavoriteRecipesViewModel> logger)
         {
-            _recipeService = recipeService;
+            _favoriteService = favoriteService;
+            _userService = userService;
             _navigationService = navigationService;
             _dialogService = dialogService;
             _logger = logger;
 
-            Favorites = _recipeService.Favorites;
+            Favorites = new ObservableCollection<Recipe>();
 
             RecipeTappedCommand = new AsyncRelayCommand<Recipe>(OnRecipeTappedAsync);
             RemoveFromFavoritesCommand = new AsyncRelayCommand<Recipe>(OnRemoveFromFavoritesAsync);
@@ -45,8 +48,22 @@ namespace RecipeApp.ViewModels
         {
             try
             {
-                await _recipeService.InitializeAsync();
-                _logger.LogInformation("Favorite recipes loaded. Count: {Count}", Favorites.Count);
+                Favorites.Clear();
+
+                // ✅ Get current user ID
+                var currentUserId = _userService.CurrentUserId;
+                if (currentUserId == null || currentUserId == Guid.Empty)
+                {
+                    await _dialogService.ShowAlertAsync("Error", "User not logged in", "OK");
+                    return;
+                }
+
+                // ✅ Get the user's favorites from API
+                var favorites = await _favoriteService.GetUserFavoritesAsync(currentUserId);
+                foreach (var recipe in favorites)
+                    Favorites.Add(recipe);
+
+                _logger.LogInformation("Loaded {Count} favorite recipes for user {UserId}", Favorites.Count, currentUserId);
             }
             catch (Exception ex)
             {
@@ -91,26 +108,26 @@ namespace RecipeApp.ViewModels
 
             try
             {
-                bool removed = await _recipeService.RemoveFromFavoritesAsync(recipe);
+                var currentUserId = _userService.CurrentUserId;
+                if (currentUserId == null || currentUserId == Guid.Empty)
+                {
+                    await _dialogService.ShowAlertAsync("Error", "User not logged in", "OK");
+                    return;
+                }
+
+                bool removed = await _favoriteService.RemoveFavoriteAsync(currentUserId, recipe.Id);
 
                 if (removed)
                 {
-                    _logger.LogInformation("Removed recipe from favorites: {Title}", recipe.Title);
+                    Favorites.Remove(recipe);
                     recipe.IsFavorite = false;
 
-                    try
-                    {
-                        await _dialogService.ShowAlertAsync("Removed", $"{recipe.Title} removed from favorites.", "OK");
-                        _logger.LogDebug("Alert shown for removing recipe: {Title}", recipe.Title);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Failed to show alert after removing recipe: {Title}", recipe.Title);
-                    }
+                    await _dialogService.ShowAlertAsync("Removed", $"{recipe.Title} removed from favorites.", "OK");
+                    _logger.LogInformation("Removed recipe from favorites: {Title}", recipe.Title);
                 }
                 else
                 {
-                    _logger.LogWarning("Attempted to remove recipe from favorites but it was not found: {Title}", recipe.Title);
+                    _logger.LogWarning("Attempted to remove recipe that was not a favorite: {Title}", recipe.Title);
                 }
             }
             catch (Exception ex)

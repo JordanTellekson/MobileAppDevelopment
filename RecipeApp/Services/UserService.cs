@@ -15,6 +15,7 @@ namespace RecipeApp.Services
         private readonly HttpClient _httpClient;
         private readonly ILogger<UserService> _logger;
 
+        public Guid CurrentUserId { get; set; }
         public string CurrentToken { get; set; } = string.Empty;
         public string CurrentUsername { get; set; } = string.Empty;
         public string CurrentRole { get; set; } = string.Empty;
@@ -71,6 +72,7 @@ namespace RecipeApp.Services
                 var authResponse = await response.Content.ReadFromJsonAsync<AuthResponse>();
                 if (authResponse != null)
                 {
+                    CurrentUserId = authResponse.UserId;
                     CurrentToken = authResponse.Token;
                     CurrentUsername = authResponse.Username;
                     CurrentRole = authResponse.Role;

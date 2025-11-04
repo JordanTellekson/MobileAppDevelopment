@@ -4,6 +4,7 @@ namespace RecipeApp.Services
 {
     public interface IUserService
     {
+        public Guid CurrentUserId { get; set; }
         string CurrentToken { get; set; }
         string CurrentUsername { get; set; }
         string CurrentRole { get; set; }

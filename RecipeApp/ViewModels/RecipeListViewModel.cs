@@ -20,6 +20,7 @@ namespace RecipeApp.ViewModels
         private readonly IDialogService _dialogService;
         private readonly INavigationService _navigationService;
         private readonly IUserService _userService;
+        private readonly IFavoriteService _favoriteService;
         private readonly ILogger<RecipeListViewModel> _logger;
 
         public IUserService UserService => _userService;
@@ -75,12 +76,14 @@ namespace RecipeApp.ViewModels
             IDialogService dialogService,
             INavigationService navigationService,
             IUserService userService,
+            IFavoriteService favoriteService,
             ILogger<RecipeListViewModel> logger)
         {
             _recipeService = recipeService;
             _dialogService = dialogService;
             _navigationService = navigationService;
             _userService = userService;
+            _favoriteService = favoriteService;
             _logger = logger;
 
             _isAuthenticated = _userService.IsAuthenticated;
@@ -259,6 +262,20 @@ namespace RecipeApp.ViewModels
                 foreach (var r in _recipeService.Favorites)
                     Favorites.Add(r);
 
+                if (_userService.IsAuthenticated)
+                {
+                    var userId = _userService.CurrentUserId;
+                    var backendFavorites = await _favoriteService.GetUserFavoritesAsync(userId);
+
+                    Favorites.Clear();
+                    foreach (var recipe in backendFavorites)
+                    {
+                        Favorites.Add(recipe);
+                        var match = Recipes.FirstOrDefault(r => r.Id == recipe.Id);
+                        if (match != null) match.IsFavorite = true;
+                    }
+                }
+
                 _logger.LogInformation("Recipes initialized: {Count}", Recipes.Count);
             }
             catch (Exception ex)
@@ -347,19 +364,33 @@ namespace RecipeApp.ViewModels
 
             try
             {
+                var userId = _userService.CurrentUserId;
+
                 if (recipe.IsFavorite)
-                    await _recipeService.RemoveFromFavoritesAsync(recipe);
+                {
+                    var removed = await _favoriteService.RemoveFavoriteAsync(userId, recipe.Id);
+                    if (removed)
+                    {
+                        recipe.IsFavorite = false;
+                        _logger.LogInformation("Removed recipe {Title} from favorites", recipe.Title);
+                    }
+                }
                 else
-                    await _recipeService.AddToFavoritesAsync(recipe);
+                {
+                    var added = await _favoriteService.AddFavoriteAsync(userId, recipe.Id);
+                    if (added)
+                    {
+                        recipe.IsFavorite = true;
+                        _logger.LogInformation("Added recipe {Title} to favorites", recipe.Title);
+                        await _dialogService.ShowAlertAsync("Added to Favorites", $"{recipe.Title} was added to your favorites!", "OK");
+                    }
+                }
 
-                recipe.IsFavorite = !recipe.IsFavorite;
+                var backendFavorites = await _favoriteService.GetUserFavoritesAsync(userId);
 
-                // Sync Favorites collection
                 Favorites.Clear();
-                foreach (var r in _recipeService.Favorites)
+                foreach (var r in backendFavorites)
                     Favorites.Add(r);
-
-                _logger.LogInformation("Favorite toggled for recipe: {Title}", recipe.Title);
 
                 await SoftRefreshRecipesAsync();
             }
