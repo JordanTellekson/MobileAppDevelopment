@@ -41,10 +41,12 @@ namespace RecipeApp.ViewModels
         public IAsyncRelayCommand LogoutCommand { get; }
         public IAsyncRelayCommand NavigateToRegisterCommand { get; }
         public IAsyncRelayCommand NavigateToLoginCommand { get; }
+        public IAsyncRelayCommand NavigateToCategoriesCommand { get; }
         public IAsyncRelayCommand RefreshCommand { get; }
 
         private bool _isDarkMode;
         public string CurrentUser => _userService.CurrentUsername;
+        public string CurrentRole => _userService.CurrentRole;
         public string ThemeButtonText => _isDarkMode ? "Light Mode" : "Dark Mode";
 
         private bool _isLoading;
@@ -97,6 +99,7 @@ namespace RecipeApp.ViewModels
             UpdateRecipeCommand = new AsyncRelayCommand<Recipe>(OnUpdateRecipeAsync);
             ToggleFavoriteCommand = new AsyncRelayCommand<Recipe>(OnToggleFavoriteAsync);
             NavigateToFavoritesCommand = new AsyncRelayCommand(OnNavigateToFavoritesAsync);
+            NavigateToCategoriesCommand = new AsyncRelayCommand(OnNavigateToCategoriesAsync);
 
             // UI commands
             ToggleThemeCommand = new RelayCommand(ToggleTheme);
@@ -220,6 +223,10 @@ namespace RecipeApp.ViewModels
 
             if (isAuthenticated)
             {
+                if (_userService.CurrentRole == "Admin")
+                {
+                    ToolbarItems.Add(new ToolbarItem("Categories", null, async () => await NavigateToCategoriesCommand.ExecuteAsync(null)));
+                }
                 ToolbarItems.Add(new ToolbarItem("Add", null, async () => await AddRecipeCommand.ExecuteAsync(null)));
                 ToolbarItems.Add(new ToolbarItem("Favorites", null, async () => await NavigateToFavoritesCommand.ExecuteAsync(null)));
                 ToolbarItems.Add(new ToolbarItem("Theme", null, () => ToggleThemeCommand.Execute(null)));
@@ -245,34 +252,43 @@ namespace RecipeApp.ViewModels
         #region Recipes & Favorites
         public async Task InitializeAsync(bool forceReload = false)
         {
-            if (_initialized && !forceReload) return;
+            if (_initialized && !forceReload)
+                return;
 
             _initialized = true;
             IsLoading = true;
 
             try
             {
+                // Load all recipes and categories from the repository
                 await _recipeService.InitializeAsync();
 
+                // Clear existing collections
                 Recipes.Clear();
-                foreach (var r in _recipeService.Recipes)
-                    Recipes.Add(r);
-
                 Favorites.Clear();
-                foreach (var r in _recipeService.Favorites)
-                    Favorites.Add(r);
 
+                // Populate recipes
+                foreach (var r in _recipeService.Recipes)
+                {
+                    // Reset IsFavorite for all recipes
+                    r.IsFavorite = false;
+                    Recipes.Add(r);
+                }
+
+                // Only populate favorites if user is logged in
                 if (_userService.IsAuthenticated)
                 {
                     var userId = _userService.CurrentUserId;
                     var backendFavorites = await _favoriteService.GetUserFavoritesAsync(userId);
 
-                    Favorites.Clear();
                     foreach (var recipe in backendFavorites)
                     {
                         Favorites.Add(recipe);
+
+                        // Mark the corresponding recipe in the main collection as favorite
                         var match = Recipes.FirstOrDefault(r => r.Id == recipe.Id);
-                        if (match != null) match.IsFavorite = true;
+                        if (match != null)
+                            match.IsFavorite = true;
                     }
                 }
 
@@ -405,6 +421,12 @@ namespace RecipeApp.ViewModels
         {
             try { await _navigationService.NavigateToAsync(nameof(Views.FavoriteRecipesPage)); }
             catch (Exception ex) { _logger.LogError(ex, "Navigation to FavoriteRecipesPage failed"); }
+        }
+
+        private async Task OnNavigateToCategoriesAsync()
+        {
+            try { await _navigationService.NavigateToAsync(nameof(Views.CategoryPage)); }
+            catch (Exception ex) { _logger.LogError(ex, "Navigation to CategoryPage failed"); }
         }
         #endregion
 

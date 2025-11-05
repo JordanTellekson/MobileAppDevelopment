@@ -12,6 +12,8 @@
     Shell.ForegroundColor="{StaticResource ToolbarTextColor}">
 
     <ShellContent Title="Recipes" ContentTemplate="{DataTemplate views:RecipeListPage}" />
+    
+    <ShellContent Title="Categories" ContentTemplate="{DataTemplate views:CategoryPage}" />
 
     <ShellContent Route="RecipeDetailPage" ContentTemplate="{DataTemplate views:RecipeDetailPage}" />
 

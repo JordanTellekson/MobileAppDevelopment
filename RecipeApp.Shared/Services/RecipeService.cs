@@ -131,34 +131,16 @@ namespace RecipeApp.Shared.Services
         public async Task UpdateCategoryAsync(Category category)
         {
             await _recipeRepo.UpdateCategoryAsync(category);
-
-            var existing = Categories.FirstOrDefault(c => c.Id == category.Id);
-            if (existing != null)
-            {
-                int index = Categories.IndexOf(existing);
-                Categories[index] = category;
-            }
         }
 
         public async Task DeleteCategoryAsync(Guid id)
         {
             await _recipeRepo.DeleteCategoryAsync(id);
-
-            var existing = Categories.FirstOrDefault(c => c.Id == id);
-            if (existing != null)
-                Categories.Remove(existing);
-
-            foreach (var recipe in Recipes.Where(r => r.CategoryId == id))
-            {
-                recipe.Category = null;
-                recipe.CategoryId = null;
-            }
         }
 
-        public Task<Category?> GetCategoryByIdAsync(Guid id)
+        public async Task<Category?> GetCategoryByIdAsync(Guid id)
         {
-            var category = Categories.FirstOrDefault(c => c.Id == id);
-            return Task.FromResult(category);
+            return await _recipeRepo.GetCategoryByIdAsync(id);
         }
 
         public async Task<IEnumerable<Recipe>> InitializeAndGetAllAsync()

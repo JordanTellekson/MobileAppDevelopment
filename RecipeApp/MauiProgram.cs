@@ -83,6 +83,21 @@ namespace RecipeApp
             builder.Services.AddSingleton<IDialogService, DialogService>();
             builder.Services.AddSingleton<INavigationService, NavigationService>();
 
+            builder.Services.AddHttpClient<ICategoryService, ClientCategoryService>(client =>
+            {
+                client.BaseAddress = new Uri(apiBase);
+            })
+                #if DEBUG
+                            .ConfigurePrimaryHttpMessageHandler(() =>
+                            {
+                                return new HttpClientHandler
+                                {
+                                    ServerCertificateCustomValidationCallback =
+                                        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+                                };
+                            });
+                #endif
+
             builder.Services.AddHttpClient<IFavoriteService, ClientFavoriteService>(client =>
             {
                 client.BaseAddress = new Uri(apiBase);
@@ -110,6 +125,7 @@ namespace RecipeApp
             builder.Services.AddTransient<FavoriteRecipesViewModel>();
             builder.Services.AddTransient<RegisterViewModel>();
             builder.Services.AddTransient<LoginViewModel>();
+            builder.Services.AddTransient<CategoriesViewModel>();
 
             // ---------------------------
             // Pages
@@ -121,6 +137,7 @@ namespace RecipeApp
             builder.Services.AddTransient<FavoriteRecipesPage>();
             builder.Services.AddTransient<RegisterPage>();
             builder.Services.AddTransient<LoginPage>();
+            builder.Services.AddTransient<CategoryPage>();
 
             return builder.Build();
         }

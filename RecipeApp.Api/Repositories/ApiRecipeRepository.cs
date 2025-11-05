@@ -32,13 +32,16 @@ namespace RecipeApp.Repositories
         {
             _logger.LogInformation("Initializing SQL RecipeRepository (combined)...");
 
-            // Load categories
-            var categories = await _dbContext.Categories.ToListAsync();
+            // Load categories as no-tracking for the observable collection
+            var categories = await _dbContext.Categories
+                                             .AsNoTracking()
+                                             .ToListAsync();
+
             Categories.Clear();
             foreach (var c in categories)
                 Categories.Add(c);
 
-            // Load recipes including categories
+            // Load recipes including categories normally (tracking)
             var recipes = await _dbContext.Recipes.Include(r => r.Category).ToListAsync();
             Recipes.Clear();
             Favorites.Clear();
@@ -72,20 +75,31 @@ namespace RecipeApp.Repositories
         {
             if (category == null) throw new ArgumentNullException(nameof(category));
 
-            var existing = await _dbContext.Categories.FindAsync(category.Id);
-            if (existing != null)
+            try
             {
-                _dbContext.Entry(existing).CurrentValues.SetValues(category);
+                // Detach any existing tracked entity with the same Id
+                var tracked = _dbContext.ChangeTracker.Entries<Category>()
+                                            .FirstOrDefault(e => e.Entity.Id == category.Id);
+                if (tracked != null)
+                    tracked.State = EntityState.Detached;
+
+                // Attach the incoming entity and mark as modified
+                _dbContext.Categories.Attach(category);
+                _dbContext.Entry(category).Property(c => c.Name).IsModified = true;
+
                 await _dbContext.SaveChangesAsync();
 
-                var obs = Categories.First(c => c.Id == category.Id);
-                obs.Name = category.Name;
+                // Update observable collection
+                var obs = Categories.FirstOrDefault(c => c.Id == category.Id);
+                if (obs != null)
+                    obs.Name = category.Name;
 
                 _logger.LogInformation("Updated category: {Name}", category.Name);
             }
-            else
+            catch (DbUpdateException ex)
             {
-                _logger.LogWarning("Update failed: Category with Id {Id} not found", category.Id);
+                _logger.LogError(ex, "Failed to update category {Name}", category.Name);
+                throw;
             }
         }
 
@@ -99,26 +113,35 @@ namespace RecipeApp.Repositories
         public async Task DeleteCategoryAsync(Guid id)
         {
             var category = await _dbContext.Categories.FindAsync(id);
-            if (category != null)
-            {
-                _dbContext.Categories.Remove(category);
-                await _dbContext.SaveChangesAsync();
 
-                Categories.Remove(category);
-
-                // Clear category references in recipes
-                foreach (var recipe in Recipes.Where(r => r.CategoryId == id))
-                {
-                    recipe.Category = null;
-                    recipe.CategoryId = null;
-                }
-
-                _logger.LogInformation("Deleted category: {Name}", category.Name);
-            }
-            else
+            if (category == null)
             {
                 _logger.LogWarning("Delete failed: Category with Id {Id} not found", id);
+                return;
             }
+
+            // Detach category from any recipes first
+            var recipesWithCategory = await _dbContext.Recipes
+                                        .Where(r => r.CategoryId == id)
+                                        .ToListAsync();
+
+            foreach (var recipe in recipesWithCategory)
+            {
+                recipe.CategoryId = null;
+                recipe.Category = null;
+            }
+
+            // Save recipe changes before removing the category
+            await _dbContext.SaveChangesAsync();
+
+            // Remove the category
+            _dbContext.Categories.Remove(category);
+            await _dbContext.SaveChangesAsync();
+
+            // Update observable collection
+            Categories.Remove(category);
+
+            _logger.LogInformation("Deleted category: {Name}", category.Name);
         }
 
         // ---------------------------

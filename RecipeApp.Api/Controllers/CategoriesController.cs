@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using RecipeApp.Repositories;
 using RecipeApp.Shared.Models;
 using RecipeApp.Shared.Services;
 
@@ -49,9 +50,8 @@ namespace RecipeApp.Api.Controllers
             return CreatedAtAction(nameof(GetById), new { id = category.Id }, category);
         }
 
-        // PUT: api/categories/{id}
         [HttpPut("{id}")]
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult> Update(Guid id, Category category)
         {
             if (id != category.Id)
@@ -61,12 +61,9 @@ namespace RecipeApp.Api.Controllers
             if (existing == null) return NotFound();
 
             await _recipeService.UpdateCategoryAsync(category);
-            await _recipeService.InitializeAsync();
-
             return NoContent();
         }
 
-        // DELETE: api/categories/{id}
         [HttpDelete("{id}")]
         [Authorize(Roles = "Admin")]
         public async Task<ActionResult> Delete(Guid id)
@@ -75,8 +72,6 @@ namespace RecipeApp.Api.Controllers
             if (existing == null) return NotFound();
 
             await _recipeService.DeleteCategoryAsync(id);
-            await _recipeService.InitializeAsync();
-
             return NoContent();
         }
     }
