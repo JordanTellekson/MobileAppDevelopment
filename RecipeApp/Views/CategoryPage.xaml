@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:RecipeApp.ViewModels"
+             x:Class="RecipeApp.Views.CategoryPage"
+             Title="Manage Categories"
+             x:Name="CategoriesPage"
+             BackgroundColor="{DynamicResource PageBackgroundColor}">
+
+    <VerticalStackLayout Padding="20">
+        <!-- Header -->
+        <Label Text="Categories"
+               FontSize="24"
+               FontAttributes="Bold"
+               TextColor="{DynamicResource PrimaryTextColor}"
+               HorizontalOptions="Center"
+               Margin="0,0,0,10" />
+
+        <!-- Add Category Section -->
+        <Grid ColumnSpacing="10" Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <!-- Entry takes all remaining space -->
+                <ColumnDefinition Width="Auto" />
+                <!-- Button sizes to content -->
+            </Grid.ColumnDefinitions>
+
+            <Entry Placeholder="New category name"
+           Text="{Binding NewCategoryName}"
+           BackgroundColor="{DynamicResource CardBackgroundColor}"
+           TextColor="{DynamicResource PrimaryTextColor}"
+           Grid.Column="0" />
+
+            <Button Text="Add Category"
+            Command="{Binding AddCategoryCommand}"
+            BackgroundColor="{DynamicResource AccentColor}"
+            TextColor="White"
+            Grid.Column="1" />
+        </Grid>
+
+        <!-- Categories List -->
+        <CollectionView ItemsSource="{Binding Categories}"
+                        Margin="0,10,0,0">
+            <CollectionView.EmptyView>
+                <Label Text="No categories found."
+                       TextColor="{DynamicResource SecondaryTextColor}"
+                       HorizontalOptions="Center"
+                       VerticalOptions="Center" />
+            </CollectionView.EmptyView>
+
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Frame BackgroundColor="{DynamicResource CardBackgroundColor}"
+                           Padding="10"
+                           Margin="0,5"
+                           CornerRadius="10"
+                           HasShadow="True">
+
+                        <Grid ColumnDefinitions="*, Auto, Auto" VerticalOptions="Center">
+                            <!-- Category Name (editable) -->
+                            <Entry Text="{Binding Name}"
+                                   FontSize="16"
+                                   TextColor="{DynamicResource PrimaryTextColor}"
+                                   BackgroundColor="Transparent" />
+
+                            <!-- Edit Button -->
+                            <Button Text="Update"
+                                    Grid.Column="1"
+                                    Padding="10,0"
+                                    Command="{Binding BindingContext.EditCategoryCommand, Source={x:Reference CategoriesPage}}"
+                                    CommandParameter="{Binding .}"
+                                    BackgroundColor="Transparent"
+                                    TextColor="{DynamicResource AccentColor}" />
+
+                            <!-- Delete Button -->
+                            <Button Text="Delete"
+                                    Grid.Column="2"
+                                    Padding="10,0"
+                                    Command="{Binding BindingContext.DeleteCategoryCommand, Source={x:Reference CategoriesPage}}"
+                                    CommandParameter="{Binding .}"
+                                    BackgroundColor="Transparent"
+                                    TextColor="Red" />
+                        </Grid>
+                    </Frame>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </VerticalStackLayout>
+</ContentPage>

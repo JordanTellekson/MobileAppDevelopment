@@ -8,8 +8,8 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 using RecipeApp.Shared.Models;
-using RecipeApp.Services;
 using RecipeApp.Shared.Services;
+using RecipeApp.Services;
 
 namespace RecipeApp.ViewModels
 {
@@ -36,6 +36,7 @@ namespace RecipeApp.ViewModels
 
             Categories = new ObservableCollection<Category>();
             FilteredCategories = new ObservableCollection<Category>();
+
             SaveRecipeCommand = new AsyncRelayCommand(OnSaveRecipeAsync);
             SelectCategoryCommand = new RelayCommand<Category>(OnSelectCategory);
         }
@@ -43,14 +44,11 @@ namespace RecipeApp.ViewModels
         public async Task InitializeAsync()
         {
             _logger.LogInformation("Initializing AddRecipeViewModel...");
-
             await _recipeService.InitializeAsync();
 
             Categories.Clear();
             foreach (var c in _recipeService.Categories)
-            {
                 Categories.Add(c);
-            }
 
             _logger.LogInformation("Loaded {Count} categories for AddRecipePage.", Categories.Count);
         }
@@ -149,32 +147,27 @@ namespace RecipeApp.ViewModels
 
         private async Task OnSaveRecipeAsync()
         {
-            _logger.LogInformation("SaveRecipeCommand triggered");
-
             if (string.IsNullOrWhiteSpace(Title))
             {
-                _logger.LogWarning("Save attempted with empty Title");
                 await _dialogService.ShowAlertAsync("Error", "Title is required", "OK");
                 return;
             }
 
-            int cookingTime = int.TryParse(CookingTimeMinutes, out var minutes) ? minutes : 0;
+            // Parse ingredients
+            var ingredientList = string.IsNullOrWhiteSpace(Ingredients)
+                ? new List<string>()
+                : Ingredients.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                             .Select(i => i.Trim())
+                             .ToList();
 
-            var ingredientList = new List<string>();
-            if (!string.IsNullOrWhiteSpace(Ingredients))
-            {
-                ingredientList = Ingredients
-                    .Split(',', StringSplitOptions.RemoveEmptyEntries)
-                    .Select(i => i.Trim())
-                    .ToList();
-            }
+            // Parse cooking time
+            int.TryParse(CookingTimeMinutes, out var cookingTime);
 
+            // Ensure category exists
             if (SelectedCategory == null && !string.IsNullOrWhiteSpace(CategoryText))
             {
-                SelectedCategory = new Category { Name = CategoryText };
+                SelectedCategory = new Category { Name = CategoryText.Trim() };
                 await _recipeService.AddCategoryAsync(SelectedCategory);
-
-                // Add to local collection to show up in autocomplete immediately
                 Categories.Add(SelectedCategory);
             }
 
@@ -186,34 +179,33 @@ namespace RecipeApp.ViewModels
                 CookingTimeMinutes = cookingTime,
                 Ingredients = ingredientList,
                 Instructions = Instructions,
-                Author = _userService.CurrentUser,
-                Category = SelectedCategory,                  // <- directly set Category
-                CategoryId = SelectedCategory?.Id ?? Guid.Empty  // <- keep CategoryId for foreign key
+                Author = _userService.CurrentUsername,
+                Category = SelectedCategory,
+                CategoryId = SelectedCategory?.Id ?? Guid.Empty
             };
 
             try
             {
-                _logger.LogInformation("Adding recipe: {Title} by {Author}", newRecipe.Title, newRecipe.Author);
                 await _recipeService.AddRecipeAsync(newRecipe);
-                _logger.LogInformation("Recipe added successfully: {Title}", newRecipe.Title);
 
-                // Clear input fields
+                // Clear fields after save
                 Title = Description = ImageUrl = CookingTimeMinutes = Ingredients = Instructions = CategoryText = string.Empty;
                 SelectedCategory = null;
                 IsCategorySuggestionsVisible = false;
 
                 await _navigationService.GoBackAsync();
-                _logger.LogDebug("Navigation back after adding recipe completed");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error occurred while saving recipe: {Title}", newRecipe.Title);
+                _logger.LogError(ex, "Error saving recipe: {Title}", newRecipe.Title);
                 await _dialogService.ShowAlertAsync("Error", "Failed to save recipe", "OK");
             }
         }
 
+        #region INotifyPropertyChanged
         public event PropertyChangedEventHandler PropertyChanged;
         protected void OnPropertyChanged([CallerMemberName] string propertyName = "")
             => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        #endregion
     }
 }

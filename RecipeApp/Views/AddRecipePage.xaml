@@ -104,11 +104,13 @@
 
             <!-- Save Button -->
             <Button Text="Save Recipe"
-                    Command="{Binding SaveRecipeCommand}"
-                    BackgroundColor="{DynamicResource ButtonBackgroundColor}"
-                    TextColor="{DynamicResource ButtonTextColor}"
-                    CornerRadius="8"
-                    Margin="0,10,0,0"/>
+                Command="{Binding SaveRecipeCommand}"
+                BackgroundColor="{DynamicResource ButtonBackgroundColor}"
+                TextColor="{DynamicResource ButtonTextColor}"
+                CornerRadius="8"
+                Margin="0,10,0,0"
+                HorizontalOptions="Center"
+                WidthRequest="200" />
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

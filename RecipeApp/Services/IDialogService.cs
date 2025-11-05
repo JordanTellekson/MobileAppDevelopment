@@ -9,5 +9,6 @@ namespace RecipeApp.Services
     public interface IDialogService
     {
         Task ShowAlertAsync(string title, string message, string buttonText);
+        Task<bool> ShowConfirmAsync(string title, string message, string accept, string cancel);
     }
 }

@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.ChangeTracking;
 using RecipeApp.Shared.Models;
 using System.Linq;
 
-namespace RecipeApp.Repositories
+namespace RecipeApp.Api.Data
 {
     public class AppDbContext : DbContext
     {
@@ -14,6 +14,8 @@ namespace RecipeApp.Repositories
 
         public DbSet<Recipe> Recipes { get; set; } = null!;
         public DbSet<Category> Categories { get; set; } = null!;
+        public DbSet<User> Users { get; set; } = null!;
+        public DbSet<UserFavorite> UserFavorites { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -37,7 +39,6 @@ namespace RecipeApp.Repositories
                 entity.Property(r => r.Title).IsRequired();
                 entity.Property(r => r.Instructions).HasColumnType("nvarchar(max)");
 
-                // Convert Ingredients list to comma-separated string + add ValueComparer
                 entity.Property(r => r.Ingredients)
                       .HasConversion(
                           v => string.Join(",", v),
@@ -53,13 +54,31 @@ namespace RecipeApp.Repositories
                           )
                       );
 
-                // -----------------------
-                // Relationship with Category
-                // -----------------------
-                entity.HasOne(r => r.Category)           // Navigation property
-                      .WithMany()                        // Category can have many Recipes
-                      .HasForeignKey(r => r.CategoryId)  // FK in Recipe
-                      .OnDelete(DeleteBehavior.SetNull); // Optional: if category deleted, Recipe.CategoryId = null
+                entity.HasOne(r => r.Category)
+                      .WithMany()
+                      .HasForeignKey(r => r.CategoryId)
+                      .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            // -----------------------
+            // UserFavorite configuration
+            // -----------------------
+            modelBuilder.Entity<UserFavorite>(entity =>
+            {
+                entity.HasKey(f => f.Id);
+
+                entity.HasOne(f => f.User)
+                      .WithMany()
+                      .HasForeignKey(f => f.UserId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(f => f.Recipe)
+                      .WithMany()
+                      .HasForeignKey(f => f.RecipeId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                // Prevent same user favoriting same recipe twice
+                entity.HasIndex(f => new { f.UserId, f.RecipeId }).IsUnique();
             });
         }
     }

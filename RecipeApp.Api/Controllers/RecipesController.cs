@@ -1,6 +1,6 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using RecipeApp.Api.Services;
 using RecipeApp.Shared.Models;
 using RecipeApp.Shared.Services;
 using System;
@@ -24,14 +24,16 @@ namespace RecipeApp.Api.Controllers
 
         // GET: api/recipes
         [HttpGet]
+        [AllowAnonymous]
         public async Task<ActionResult<IEnumerable<Recipe>>> GetAll()
         {
-            await _recipeService.InitializeAsync(); // Reload data from database
+            await _recipeService.InitializeAsync();
             return Ok(_recipeService.Recipes);
         }
 
         // GET: api/recipes/{id}
         [HttpGet("{id:guid}")]
+        [AllowAnonymous]
         public async Task<ActionResult<Recipe>> GetById(Guid id)
         {
             var recipe = await _recipeService.GetRecipeByIdAsync(id);
@@ -43,6 +45,7 @@ namespace RecipeApp.Api.Controllers
 
         // POST: api/recipes
         [HttpPost]
+        [Authorize]
         public async Task<ActionResult<Recipe>> Create([FromBody] Recipe recipe)
         {
             if (recipe == null)
@@ -51,18 +54,19 @@ namespace RecipeApp.Api.Controllers
             try
             {
                 await _recipeService.AddRecipeAsync(recipe);
-                await _recipeService.InitializeAsync(); // Reload to include new recipe
+                await _recipeService.InitializeAsync();
                 return CreatedAtAction(nameof(GetById), new { id = recipe.Id }, recipe);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating recipe: {Title}", recipe.Title);
-                return StatusCode(500, "Internal server error while creating recipe.");
+                return StatusCode(500, $"Internal server error: {ex.Message}\n{ex.StackTrace}");
             }
         }
 
         // PUT: api/recipes/{id}
         [HttpPut("{id:guid}")]
+        [Authorize]
         public async Task<IActionResult> Update(Guid id, [FromBody] Recipe recipe)
         {
             if (recipe == null || id != recipe.Id)
@@ -71,7 +75,7 @@ namespace RecipeApp.Api.Controllers
             try
             {
                 await _recipeService.UpdateRecipeAsync(recipe);
-                await _recipeService.InitializeAsync(); // Reload to update collection
+                await _recipeService.InitializeAsync();
                 return NoContent();
             }
             catch (Exception ex)
@@ -83,64 +87,19 @@ namespace RecipeApp.Api.Controllers
 
         // DELETE: api/recipes/{id}
         [HttpDelete("{id:guid}")]
+        [Authorize]
         public async Task<IActionResult> Delete(Guid id)
         {
             try
             {
                 await _recipeService.DeleteRecipeAsync(id);
-                await _recipeService.InitializeAsync(); // Reload to update collection
+                await _recipeService.InitializeAsync();
                 return NoContent();
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error deleting recipe with ID {Id}", id);
                 return StatusCode(500, "Internal server error while deleting recipe.");
-            }
-        }
-
-        // POST: api/recipes/{id}/favorite
-        [HttpPost("{id:guid}/favorite")]
-        public async Task<IActionResult> AddToFavorites(Guid id)
-        {
-            var recipe = await _recipeService.GetRecipeByIdAsync(id);
-            if (recipe == null) return NotFound($"Recipe with id {id} not found.");
-
-            try
-            {
-                bool added = await _recipeService.AddToFavoritesAsync(recipe);
-                if (!added)
-                    return BadRequest("Recipe is already a favorite.");
-
-                await _recipeService.InitializeAsync(); // Reload favorites
-                return Ok(recipe);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error adding recipe to favorites: {Title}", recipe.Title);
-                return StatusCode(500, "Internal server error while adding to favorites.");
-            }
-        }
-
-        // DELETE: api/recipes/{id}/favorite
-        [HttpDelete("{id:guid}/favorite")]
-        public async Task<IActionResult> RemoveFromFavorites(Guid id)
-        {
-            var recipe = await _recipeService.GetRecipeByIdAsync(id);
-            if (recipe == null) return NotFound($"Recipe with id {id} not found.");
-
-            try
-            {
-                bool removed = await _recipeService.RemoveFromFavoritesAsync(recipe);
-                if (!removed)
-                    return BadRequest("Recipe was not in favorites.");
-
-                await _recipeService.InitializeAsync(); // Reload favorites
-                return NoContent();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error removing recipe from favorites: {Title}", recipe.Title);
-                return StatusCode(500, "Internal server error while removing from favorites.");
             }
         }
     }

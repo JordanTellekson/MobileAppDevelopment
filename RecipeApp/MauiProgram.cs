@@ -4,7 +4,7 @@ using RecipeApp.Services;
 using RecipeApp.Shared.Services;
 using RecipeApp.ViewModels;
 using RecipeApp.Views;
-using static RecipeApp.Services.IUserService;
+using System.Net.Http;
 
 namespace RecipeApp
 {
@@ -13,12 +13,14 @@ namespace RecipeApp
         public static MauiApp CreateMauiApp()
         {
             var builder = MauiApp.CreateBuilder();
+
             builder
                 .UseMauiApp<App>()
                 .ConfigureFonts(fonts =>
                 {
                     fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
                     fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
+                    fonts.AddFont("fa-solid-900.otf", "FASolid");
                 });
 
 #if DEBUG
@@ -27,17 +29,91 @@ namespace RecipeApp
 #endif
 
             // ---------------------------
-            // Repositories
+            // API Base URL
             // ---------------------------
-            builder.Services.AddSingleton<IRecipeRepository, RecipeRepository>();
+#if ANDROID
+            string apiBase = "https://10.0.2.2:7223/"; // Android emulator loopback
+#else
+            string apiBase = "https://localhost:7223/"; // Windows/macOS
+#endif
 
             // ---------------------------
-            // Services
+            // Repositories with HttpClient
+            // ---------------------------
+            builder.Services.AddHttpClient<IRecipeRepository, ClientRecipeRepository>(client =>
+            {
+                client.BaseAddress = new Uri(apiBase);
+            })
+#if DEBUG
+            .ConfigurePrimaryHttpMessageHandler(() =>
+            {
+                return new HttpClientHandler
+                {
+                    ServerCertificateCustomValidationCallback =
+                        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+                };
+            });
+#endif
+
+            // ---------------------------
+            // UserService as singleton with logging
+            // ---------------------------
+            builder.Services.AddSingleton<IUserService>(sp =>
+            {
+                var logger = sp.GetRequiredService<ILogger<UserService>>();
+
+                #if DEBUG
+                                var handler = new HttpClientHandler
+                                {
+                                    ServerCertificateCustomValidationCallback =
+                                        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+                                };
+                                var client = new HttpClient(handler) { BaseAddress = new Uri(apiBase) };
+                #else
+                    var client = new HttpClient { BaseAddress = new Uri(apiBase) };
+                #endif
+
+                return new UserService(client, logger);
+            });
+
+            // ---------------------------
+            // Other services
             // ---------------------------
             builder.Services.AddSingleton<IRecipeService, RecipeService>();
-            builder.Services.AddTransient<IDialogService, DialogService>();
-            builder.Services.AddTransient<INavigationService, NavigationService>();
-            builder.Services.AddTransient<IUserService, UserService>();
+            builder.Services.AddSingleton<IDialogService, DialogService>();
+            builder.Services.AddSingleton<INavigationService, NavigationService>();
+
+            builder.Services.AddHttpClient<ICategoryService, ClientCategoryService>(client =>
+            {
+                client.BaseAddress = new Uri(apiBase);
+            })
+                #if DEBUG
+                            .ConfigurePrimaryHttpMessageHandler(() =>
+                            {
+                                return new HttpClientHandler
+                                {
+                                    ServerCertificateCustomValidationCallback =
+                                        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+                                };
+                            });
+                #endif
+
+            builder.Services.AddHttpClient<IFavoriteService, ClientFavoriteService>(client =>
+            {
+                client.BaseAddress = new Uri(apiBase);
+            })
+                #if DEBUG
+                .ConfigurePrimaryHttpMessageHandler(() =>
+                {
+                    return new HttpClientHandler
+                    {
+                        ServerCertificateCustomValidationCallback =
+                            HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+                    };
+                });
+                #else
+                ;
+                #endif
 
             // ---------------------------
             // ViewModels
@@ -47,6 +123,9 @@ namespace RecipeApp
             builder.Services.AddTransient<RecipeDetailViewModel>();
             builder.Services.AddTransient<UpdateRecipeViewModel>();
             builder.Services.AddTransient<FavoriteRecipesViewModel>();
+            builder.Services.AddTransient<RegisterViewModel>();
+            builder.Services.AddTransient<LoginViewModel>();
+            builder.Services.AddTransient<CategoriesViewModel>();
 
             // ---------------------------
             // Pages
@@ -56,6 +135,9 @@ namespace RecipeApp
             builder.Services.AddTransient<RecipeDetailPage>();
             builder.Services.AddTransient<UpdateRecipePage>();
             builder.Services.AddTransient<FavoriteRecipesPage>();
+            builder.Services.AddTransient<RegisterPage>();
+            builder.Services.AddTransient<LoginPage>();
+            builder.Services.AddTransient<CategoryPage>();
 
             return builder.Build();
         }

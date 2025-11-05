@@ -1,5 +1,4 @@
 ﻿using RecipeApp.Repositories;
-using RecipeApp.Shared.Services;
 using RecipeApp.Shared.Models;
 using System;
 using System.Collections.ObjectModel;
@@ -21,11 +20,15 @@ namespace RecipeApp.Shared.Services
             _recipeRepo = recipeRepo;
         }
 
+        /// <summary>
+        /// Initialize the service by fetching all recipes and categories from the API.
+        /// Links recipes to their categories and populates Favorites.
+        /// </summary>
         public async Task InitializeAsync()
         {
             await _recipeRepo.InitializeAsync();
 
-            // Ensure all recipes link correctly to their category objects
+            // Link each recipe to its Category object
             foreach (var recipe in Recipes)
             {
                 if (recipe.CategoryId.HasValue && recipe.Category == null)
@@ -34,67 +37,116 @@ namespace RecipeApp.Shared.Services
                 }
             }
 
-            // Add any missing categories dynamically (e.g. from manually created recipes)
-            var missingCategories = Recipes
-                .Where(r => r.Category != null && !Categories.Any(c => c.Id == r.Category.Id))
-                .Select(r => r.Category)
-                .Distinct()
-                .ToList();
-
-            foreach (var category in missingCategories)
-            {
-                await AddCategoryAsync(category);
-            }
+            // Ensure Favorites collection is accurate
+            Favorites.Clear();
+            foreach (var fav in Recipes.Where(r => r.IsFavorite))
+                Favorites.Add(fav);
         }
 
         // ---------------------------
-        // Recipes
+        // Recipes CRUD
         // ---------------------------
         public async Task AddRecipeAsync(Recipe recipe)
         {
             if (recipe.Category != null)
+                recipe.CategoryId = recipe.Category.Id;
+
+            await _recipeRepo.AddRecipeAsync(recipe);
+
+            // Keep collections in sync
+            if (!Recipes.Contains(recipe))
+                Recipes.Add(recipe);
+            if (recipe.IsFavorite && !Favorites.Contains(recipe))
+                Favorites.Add(recipe);
+        }
+
+        public async Task UpdateRecipeAsync(Recipe recipe)
+        {
+            await _recipeRepo.UpdateRecipeAsync(recipe);
+
+            var existing = Recipes.FirstOrDefault(r => r.Id == recipe.Id);
+            if (existing != null)
             {
-                // Ensure category exists before linking
-                var existingCategory = Categories.FirstOrDefault(c => c.Id == recipe.Category.Id);
-                if (existingCategory == null)
+                int index = Recipes.IndexOf(existing);
+                Recipes[index] = recipe;
+
+                if (recipe.IsFavorite)
                 {
-                    await AddCategoryAsync(recipe.Category);
+                    if (!Favorites.Contains(recipe))
+                        Favorites.Add(recipe);
                 }
                 else
                 {
-                    recipe.Category = existingCategory;
-                    recipe.CategoryId = existingCategory.Id;
+                    Favorites.Remove(recipe);
                 }
             }
-
-            await _recipeRepo.AddRecipeAsync(recipe);
         }
 
-        public Task UpdateRecipeAsync(Recipe recipe) => _recipeRepo.UpdateRecipeAsync(recipe);
-        public Task DeleteRecipeAsync(Guid id) => _recipeRepo.DeleteRecipeAsync(id);
+        public async Task DeleteRecipeAsync(Guid id)
+        {
+            await _recipeRepo.DeleteRecipeAsync(id);
+
+            var existing = Recipes.FirstOrDefault(r => r.Id == id);
+            if (existing != null)
+            {
+                Recipes.Remove(existing);
+                Favorites.Remove(existing);
+            }
+        }
+
         public Task<Recipe?> GetRecipeByIdAsync(Guid id) => _recipeRepo.GetRecipeByIdAsync(id);
 
-        public Task<bool> AddToFavoritesAsync(Recipe recipe) => _recipeRepo.AddToFavoritesAsync(recipe);
-        public Task<bool> RemoveFromFavoritesAsync(Recipe recipe) => _recipeRepo.RemoveFromFavoritesAsync(recipe);
+        public async Task<bool> AddToFavoritesAsync(Recipe recipe)
+        {
+            var success = await _recipeRepo.AddToFavoritesAsync(recipe);
+            if (success && !Favorites.Contains(recipe))
+            {
+                recipe.IsFavorite = true;
+                Favorites.Add(recipe);
+            }
+            return success;
+        }
+
+        public async Task<bool> RemoveFromFavoritesAsync(Recipe recipe)
+        {
+            var success = await _recipeRepo.RemoveFromFavoritesAsync(recipe);
+            if (success)
+            {
+                recipe.IsFavorite = false;
+                Favorites.Remove(recipe);
+            }
+            return success;
+        }
 
         // ---------------------------
-        // Categories
+        // Categories CRUD
         // ---------------------------
         public async Task AddCategoryAsync(Category category)
         {
-            if (category == null) throw new ArgumentNullException(nameof(category));
-            if (!Categories.Any(c => c.Id == category.Id))
-            {
-                await _recipeRepo.AddCategoryAsync(category); // new method inside RecipeRepository
-            }
+            await _recipeRepo.AddCategoryAsync(category);
+            if (!Categories.Contains(category))
+                Categories.Add(category);
         }
 
-        public Task UpdateCategoryAsync(Category category) => _recipeRepo.UpdateCategoryAsync(category);
-        public Task DeleteCategoryAsync(Guid id) => _recipeRepo.DeleteCategoryAsync(id);
-        public Task<Category?> GetCategoryByIdAsync(Guid id)
+        public async Task UpdateCategoryAsync(Category category)
         {
-            var category = Categories.FirstOrDefault(c => c.Id == id);
-            return Task.FromResult(category);
+            await _recipeRepo.UpdateCategoryAsync(category);
+        }
+
+        public async Task DeleteCategoryAsync(Guid id)
+        {
+            await _recipeRepo.DeleteCategoryAsync(id);
+        }
+
+        public async Task<Category?> GetCategoryByIdAsync(Guid id)
+        {
+            return await _recipeRepo.GetCategoryByIdAsync(id);
+        }
+
+        public async Task<IEnumerable<Recipe>> InitializeAndGetAllAsync()
+        {
+            await InitializeAsync();
+            return Recipes;
         }
     }
 }

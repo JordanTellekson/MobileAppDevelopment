@@ -1,49 +1,100 @@
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
+using RecipeApp.Api.Data;
 using RecipeApp.Api.Services;
 using RecipeApp.Repositories;
 using RecipeApp.Shared.Services;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container
 builder.Services.AddControllers();
 
-// ---------------------------
-// Repository switch based on appsettings.json
-// ---------------------------
-bool useDatabase = builder.Configuration.GetValue<bool>("Storage:UseDatabase");
+// Add EF Core
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-if (useDatabase)
-{
-    // SQL Server (Docker) setup
-    builder.Services.AddDbContext<AppDbContext>(options =>
-        options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+// Repository and service registrations
+builder.Services.AddScoped<IRecipeRepository, ApiRecipeRepository>();
+builder.Services.AddScoped<IRecipeService, RecipeService>();
 
-    // API repository and service
-    builder.Services.AddScoped<IRecipeRepository, ApiRecipeRepository>();
-    builder.Services.AddScoped<IRecipeService, ApiRecipeService>();
-}
-else
+// Add User service and repository
+builder.Services.AddScoped<IUserRepository, ApiUserRepository>();
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IFavoriteService, FavoriteService>();
+
+// -----------------------------
+// Swagger/OpenAPI
+// -----------------------------
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(c =>
 {
-    // JSON repository (local file) needs IWebHostEnvironment
-    builder.Services.AddSingleton<IRecipeRepository, JsonRecipeRepository>(sp =>
+    c.SwaggerDoc("v1", new OpenApiInfo
     {
-        var logger = sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<JsonRecipeRepository>>();
-        var env = sp.GetRequiredService<IWebHostEnvironment>();
-        return new JsonRecipeRepository(logger, env);
+        Title = "Recipe API",
+        Version = "v1"
     });
 
-    // JSON-style service
-    builder.Services.AddScoped<IRecipeService, RecipeService>();
-}
+    // Add JWT Bearer support for Swagger UI
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        In = ParameterLocation.Header,
+        Description = "Please enter 'Bearer' followed by a space and your JWT.",
+        Name = "Authorization",
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
+    });
 
-// Swagger/OpenAPI
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+});
+
+// -----------------------------
+// JWT Authentication Setup
+// -----------------------------
+var jwtSettings = builder.Configuration.GetSection("Jwt");
+var key = Encoding.ASCII.GetBytes(jwtSettings["Key"]);
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.RequireHttpsMetadata = true;
+    options.SaveToken = true;
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(key),
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidIssuer = jwtSettings["Issuer"],
+        ValidAudience = jwtSettings["Audience"],
+        ClockSkew = TimeSpan.Zero
+    };
+});
 
 var app = builder.Build();
 
-// Configure middleware
+// Middleware
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -51,17 +102,18 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+// authentication before authorization
+app.UseAuthentication();
 app.UseAuthorization();
+
 app.MapControllers();
 
-// Ensure SQL database is created if using SQL
-if (useDatabase)
+// Ensure SQL database is created
+using (var scope = app.Services.CreateScope())
 {
-    using (var scope = app.Services.CreateScope())
-    {
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        db.Database.EnsureCreated();
-    }
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    db.Database.EnsureCreated();
 }
 
 app.Run();

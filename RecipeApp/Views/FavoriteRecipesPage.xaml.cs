@@ -5,10 +5,18 @@ namespace RecipeApp.Views;
 
 public partial class FavoriteRecipesPage : ContentPage
 {
+    private readonly FavoriteRecipesViewModel _viewModel;
+
     public FavoriteRecipesPage(FavoriteRecipesViewModel viewModel)
     {
         InitializeComponent();
-        BindingContext = viewModel;
+        BindingContext = _viewModel = viewModel;
+    }
+
+    protected override async void OnAppearing()
+    {
+        base.OnAppearing();
+        await _viewModel.InitializeAsync();
     }
 
     private void OnSwipeEnded(object sender, SwipeEndedEventArgs e)
